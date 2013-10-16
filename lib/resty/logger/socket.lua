@@ -10,16 +10,23 @@ local _M = {}
 
 _M._VERSION = '0.01'
 
-local  config = {
-    buffer              = { size = 0, data = {}, index = 0 },
-    flush_limit         = 4096,         -- 4KB
-    drop_limit          = 1048576,      -- 1MB
-    timeout             = 1000,         -- 1 sec
-}
+local    buffer              = { size = 0, data = {}, index = 0 }
+local    flush_limit         = 4096         -- 4KB
+local    drop_limit          = 1048576      -- 1MB
+local    timeout             = 1000         -- 1 sec
+local    host
+local    port
+local    path
+
+local    connecting
+local    connected
+local    flushing
+local    inited
+local    sock
 
 
 local function _connect()
-    local ok, err, sock
+    local ok, err
 
     sock, err = tcp()
     if not sock then
@@ -28,29 +35,28 @@ local function _connect()
     end
 
 
-    config.connecting = true
+    connecting = true
 
     -- host/port and path config have already been checked in init()
-    if config.host and config.port then
-        ok, err =  sock:connect(config.host, config.port)
-    elseif config.path then
-        ok, err =  sock:connect(config.path)
+    if host and port then
+        ok, err =  sock:connect(host, port)
+    elseif path then
+        ok, err =  sock:connect(path)
     end
 
     if not ok then
         return nil, err
     end
 
-    sock:settimeout(config.timeout)
+    sock:settimeout(timeout)
 
-    config.sock = sock
-    config.connecting = false
-    config.connected = true
+    connecting = false
+    connected = true
     return true
 end
 
 local function _write_buffer(msg)
-    local buf = config.buffer
+    local buf = buffer
     local string_msg = msg
 
     if type(msg) ~= "string" then
@@ -71,8 +77,7 @@ local function _flush()
         return nil, err
     end
 
-    local sock  = config.sock
-    local buf   = config.buffer
+    local buf   = buffer
 
     -- TODO If send failed, these logs would be lost
     local packet = table.concat(buf.data)
@@ -85,13 +90,13 @@ local function _flush()
     local bytes, err = sock:send(packet)
     if not bytes then
         -- sock:send always close current connection on error
-        config.connected = false
+        connected = false
         ngx_log(ngx.ERR, err)
         return nil, err
     end
 
 
-    config.flushing = false
+    flushing = false
 
     return sock:setkeepalive(0, 10)
     --return bytes
@@ -103,34 +108,46 @@ function _M.init(user_config)
     end
 
     for k, v in pairs(user_config) do
-        config[k] = v
+        if k == "host" then
+            host = v
+        elseif k == "port" then
+            port = v
+        elseif k == "path" then
+            path = v
+        elseif k == "flush_limit" then
+            flush_limit = v
+        elseif k == "drop_limit" then
+            drop_limit = v
+        elseif k == "timeout" then
+            timeout = v
+        end
     end
 
-    if not (config.host and config.port) and not config.host then
+    if not (host and port) and not host then
         return nil, "no logging server configured. Need host/port or path."
     end
 
 
-    if (config.flush_limit >= config.drop_limit) then
+    if (flush_limit >= drop_limit) then
         return nil, "flush_limit should < drop_limit"
     end
 
-    config.flushing = false
-    config.connecting = false
+    flushing = false
+    connecting = false
 
-    config.connected = false
-    config.inited = true
+    connected = false
+    inited = true
 
     --ngx.timer.at(0, _connect)
-    return config.inited
+    return inited
 end
 
 function _M.log(msg)
-    if not config.inited then
+    if not inited then
         return nil, "not initialized"
     end
 
-    if (config.buffer.size + string.len(msg) > config.drop_limit) then
+    if (buffer.size + string.len(msg) > drop_limit) then
         return nil, "logger buffer is full, this log would be dropped"
     end
 
@@ -139,8 +156,8 @@ function _M.log(msg)
         return nil, err
     end
 
-    if (config.buffer.size > config.flush_limit and not config.flushing) then
-        config.flushing = true
+    if (buffer.size > flush_limit and not flushing) then
+        flushing = true
         timer_at(0, _flush)
     end
 
