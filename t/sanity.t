@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (3 * blocks()) + 4;
+plan tests => repeat_each() * (3 * blocks()) + 20;
 
 my $pwd = cwd();
 
@@ -108,3 +108,33 @@ not initialized
 --- tcp_query_len: 10
 --- response_body
 foo
+
+
+=== TEST 4: partial flush
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.inited then
+                local ok, err = logger.init{ host = "127.0.0.1", port = 29999, flush_limit = 5 }
+            end
+
+            local ok, err = logger.log("aaa")
+            if not ok then
+                ngx.log(ngx.ERR, "log failed")
+            end
+        ';
+    }
+--- request eval
+["GET /t","GET /t","GET /t"]
+--- wait: 1
+--- tcp_listen: 29999
+--- tcp_reply:
+--- no_error_log
+[error]
+--- tcp_query: aaaaaa
+--- tcp_query_len: 6
+--- response_body eval
+["foo\n","foo\n","foo\n"]
