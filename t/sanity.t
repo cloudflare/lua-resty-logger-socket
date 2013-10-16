@@ -53,7 +53,38 @@ foo
 
 
 
-=== TEST 2: buffer log, no flush
+=== TEST 2: log number
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.inited then
+                local ok, err = logger.init{
+                    host = "127.0.0.1", port = 29999, flush_limit = 1 }
+            end
+
+            local ok, err = logger.log(10)
+            if not ok then
+                ngx.log(ngx.ERR, "log failed")
+            end
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 0.1
+--- tcp_listen: 29999
+--- tcp_reply:
+--- no_error_log
+[error]
+--- tcp_query: 10
+--- response_body
+foo
+
+
+
+=== TEST 3: buffer log, no flush
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -84,7 +115,7 @@ foo
 
 
 
-=== TEST 3: not inited
+=== TEST 4: not inited
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -110,7 +141,7 @@ foo
 
 
 
-=== TEST 4: log subrequest
+=== TEST 5: log subrequest
 --- http_config eval: $::HttpConfig
 --- config
     log_subrequest on;
@@ -154,7 +185,7 @@ foo
 
 
 
-=== TEST 5: do not log subrequest
+=== TEST 6: do not log subrequest
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -197,7 +228,7 @@ foo
 
 
 
-=== TEST 6: connect timeout
+=== TEST 7: connect timeout
 --- http_config eval: $::HttpConfig
 --- config
     resolver 8.8.8.8;
@@ -230,7 +261,7 @@ foo
 
 
 
-=== TEST 7: partial flush
+=== TEST 8: partial flush
 --- http_config eval: $::HttpConfig
 --- config
     location /t {

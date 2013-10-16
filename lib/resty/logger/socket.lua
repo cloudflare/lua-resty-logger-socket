@@ -35,10 +35,9 @@ local function _connect()
             ngx_log(ngx.ERROR, err)
             return nil, err
         end
-        ngx.log(ngx.NOTICE, "set timeout " .. timeout)
+
         sock:settimeout(timeout)
     end
-
 
     connecting = true
 
@@ -70,7 +69,7 @@ local function _write_buffer(msg)
     end
 
     table.insert(buf.data, string_msg)
-    buf.size = buf.size + #msg
+    buf.size = buf.size + #string_msg
 
     return buf.size
 end
