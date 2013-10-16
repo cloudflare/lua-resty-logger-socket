@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(1);
 
-plan tests => repeat_each() * (blocks() * 4 - 3);
+plan tests => repeat_each() * (blocks() * 4 - 3 + 6);
 
 my $pwd = cwd();
 
@@ -223,7 +223,7 @@ GET /t?a=1&b=2
 --- tcp_listen: 29999
 --- tcp_reply:
 --- error_log
-lua tcp socket connect timed out
+tcp socket connect timed out
 --- tcp_query:
 --- response_body
 foo
@@ -258,5 +258,3 @@ foo
 --- tcp_query: aaaaaa
 --- response_body eval
 ["foo\n","foo\n","foo\n"]
---- SKIP
-
