@@ -1,16 +1,17 @@
 -- Copyright (C) 2013 Jiale Zhi (calio), Cloudflare Inc.
 
 
-local _G = _G
 local tcp = ngx.socket.tcp
+local timer_at = ngx.timer.at
+local ngx_log = ngx.log
+
+local _M = {}
 
 
-module("resty.logger.socket", package.seeall)
-
-_VERSION = '0.01'
+_M._VERSION = '0.01'
 
 local  config = {
-    buffer              = { size = 0, data = {} },
+    buffer              = { size = 0, data = {}, index = 0 },
     flush_limit         = 4096,         -- 4KB
     drop_limit          = 1048576,      -- 1MB
     timeout             = 1000,         -- 1 sec
@@ -22,7 +23,7 @@ local function _connect()
 
     sock, err = tcp()
     if not sock then
-        ngx.log(ngx.ERROR, err)
+        ngx_log(ngx.ERROR, err)
         return nil, err
     end
 
@@ -50,9 +51,14 @@ end
 
 local function _write_buffer(msg)
     local buf = config.buffer
+    local string_msg = msg
 
-    table.insert(buf.data, msg)
-    buf.size = buf.size + string.len(msg)
+    if type(msg) ~= "string" then
+        string_msg = tostring(msg)
+    end
+
+    table.insert(buf.data, string_msg)
+    buf.size = buf.size + #msg
 
     return buf.size
 end
@@ -61,7 +67,7 @@ local function _flush()
 
     local ok, err = _connect()
     if not ok then
-        ngx.log(ngx.ERR, err)
+        ngx_log(ngx.ERR, err)
         return nil, err
     end
 
@@ -80,7 +86,7 @@ local function _flush()
     if not bytes then
         -- sock:send always close current connection on error
         config.connected = false
-        ngx.log(ngx.ERR, err)
+        ngx_log(ngx.ERR, err)
         return nil, err
     end
 
@@ -91,7 +97,7 @@ local function _flush()
     --return bytes
 end
 
-function init(user_config)
+function _M.init(user_config)
     if (type(user_config) ~= "table") then
         return nil, "user_config must be a table"
     end
@@ -119,7 +125,7 @@ function init(user_config)
     return config.inited
 end
 
-function log(msg)
+function _M.log(msg)
     if not config.inited then
         return nil, "not initialized"
     end
@@ -135,8 +141,10 @@ function log(msg)
 
     if (config.buffer.size > config.flush_limit and not config.flushing) then
         config.flushing = true
-        ngx.timer.at(0, _flush)
+        timer_at(0, _flush)
     end
 
     return true
 end
+
+return _M
