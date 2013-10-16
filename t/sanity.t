@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(1);
 
-plan tests => repeat_each() * (blocks() * 4 - 2);
+plan tests => repeat_each() * (blocks() * 4 - 3);
 
 my $pwd = cwd();
 
@@ -110,45 +110,12 @@ foo
 
 
 
-=== TEST 4: partial flush
---- http_config eval: $::HttpConfig
---- config
-    location /t {
-        content_by_lua 'ngx.say("foo")';
-        log_by_lua '
-            local logger = require "resty.logger.socket"
-            if not logger.inited then
-                local ok, err = logger.init{
-                    host = "127.0.0.1", port = 29999, flush_limit = 5 }
-            end
-
-            local ok, err = logger.log("aaa")
-            if not ok then
-                ngx.log(ngx.ERR, "log failed")
-            end
-        ';
-    }
---- request eval
-["GET /t","GET /t","GET /t"]
---- wait: 1
---- tcp_listen: 29999
---- tcp_reply:
---- no_error_log
-[error]
---- tcp_query: aaaaaa
---- response_body eval
-["foo\n","foo\n","foo\n"]
---- SKIP
-
-
-
-=== TEST 5: log subrequest
+=== TEST 4: log subrequest
 --- http_config eval: $::HttpConfig
 --- config
     log_subrequest on;
     location /t {
         content_by_lua '
-        ngx.log(ngx.NOTICE, "uri:" .. ngx.var.uri, ngx.var.is_args, ngx.var.args)
             local res = ngx.location.capture("/main?c=1&d=2")
             if res.status ~= 200 then
                 ngx.log(ngx.ERR, "capture /main failed")
@@ -159,16 +126,14 @@ foo
 
     location /main {
         content_by_lua '
-        ngx.log(ngx.NOTICE, "uri:" .. ngx.var.uri, ngx.var.is_args, ngx.var.args)
         ngx.say("foo")';
     }
 
     log_by_lua '
-        ngx.log(ngx.NOTICE, "enter log_by_lua")
         local logger = require "resty.logger.socket"
         if not logger.inited then
             local ok, err = logger.init{
-                host = "127.0.0.1", port = 29999, flush_limit = 1 }
+                host = "127.0.0.1", port = 29999, flush_limit = 6 }
         end
 
         local ok, err = logger.log(ngx.var.uri)
@@ -178,7 +143,7 @@ foo
     ';
 --- request
 GET /t?a=1&b=2
---- wait: 0.1
+--- wait: 1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
@@ -189,7 +154,7 @@ foo
 
 
 
-=== TEST 6: do not log subrequest
+=== TEST 5: do not log subrequest
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -232,7 +197,7 @@ foo
 
 
 
-=== TEST 7: connect timeout
+=== TEST 6: connect timeout
 --- http_config eval: $::HttpConfig
 --- config
     resolver 8.8.8.8;
@@ -242,7 +207,8 @@ foo
             local logger = require "resty.logger.socket"
             if not logger.inited then
                 local ok, err = logger.init{
-                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 0.01 }
+                    -- timeout 1ms
+                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 1 }
             end
 
             local ok, err = logger.log(ngx.var.request_uri)
@@ -253,12 +219,44 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 1
+--- wait: 0.5
 --- tcp_listen: 29999
 --- tcp_reply:
 --- error_log
-errorlog
+lua tcp socket connect timed out
 --- tcp_query:
 --- response_body
 foo
+
+
+
+=== TEST 7: partial flush
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.inited then
+                local ok, err = logger.init{
+                    host = "127.0.0.1", port = 29999, flush_limit = 5 }
+            end
+
+            local ok, err = logger.log("aaa")
+            if not ok then
+                ngx.log(ngx.ERR, "log failed")
+            end
+        ';
+    }
+--- request eval
+["GET /t","GET /t","GET /t"]
+--- wait: 1
+--- tcp_listen: 29999
+--- tcp_reply:
+--- no_error_log
+[error]
+--- tcp_query: aaaaaa
+--- response_body eval
+["foo\n","foo\n","foo\n"]
 --- SKIP
+

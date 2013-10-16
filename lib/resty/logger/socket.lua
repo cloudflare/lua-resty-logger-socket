@@ -14,6 +14,7 @@ local buffer                = { size = 0, data = {}, index = 0 }
 local flush_limit           = 4096         -- 4KB
 local drop_limit            = 1048576      -- 1MB
 local timeout               = 1000         -- 1 sec
+local flush_interval        = 60           -- 5 sec
 local host
 local port
 local path
@@ -28,15 +29,20 @@ local sock
 local function _connect()
     local ok, err
 
-    sock, err = tcp()
-    if not sock then
-        ngx_log(ngx.ERROR, err)
-        return nil, err
+    if not connected then
+        sock, err = tcp()
+        if not sock then
+            ngx_log(ngx.ERROR, err)
+            return nil, err
+        end
+        ngx.log(ngx.NOTICE, "set timeout " .. timeout)
+        sock:settimeout(timeout)
     end
 
 
     connecting = true
 
+    ngx.log(ngx.NOTICE, "_connect started")
     -- host/port and path config have already been checked in init()
     if host and port then
         ok, err =  sock:connect(host, port)
@@ -48,7 +54,7 @@ local function _connect()
         return nil, err
     end
 
-    sock:settimeout(timeout)
+    ngx.log(ngx.NOTICE, "_connect connected")
 
     connecting = false
     connected = true
@@ -69,9 +75,7 @@ local function _write_buffer(msg)
     return buf.size
 end
 
-local function _flush()
-
-    ngx.log(ngx.NOTICE, "_flush")
+local function _do_flush()
     local ok, err = _connect()
     if not ok then
         ngx_log(ngx.ERR, err)
@@ -96,12 +100,28 @@ local function _flush()
         ngx_log(ngx.ERR, err)
         return nil, err
     end
+    ngx.log(ngx.NOTICE, "flush ok")
+end
+
+local function _flush()
+    ngx.log(ngx.NOTICE, "_flush")
+    if flushing then
+        -- do this later
+        ngx.log(ngx.NOTICE, "_flush later")
+        ngx.timer.at(flush_interval, _flush)
+        return true
+    end
+
+    flushing = true
+    local ok, err = _do_flush()
+    if not ok then
+        return nil, err
+    end
 
 
+    sock:setkeepalive(0, 10)
     flushing = false
-
-    return sock:setkeepalive(0, 10)
-    --return bytes
+    return true
 end
 
 function _M.init(user_config)
@@ -160,9 +180,8 @@ function _M.log(msg)
         return nil, err
     end
 
-    if (buffer.size > flush_limit and not flushing) then
+    if (buffer.size > flush_limit) then
         ngx.log(ngx.NOTICE, "start flushing")
-        flushing = true
         timer_at(0, _flush)
     end
 
