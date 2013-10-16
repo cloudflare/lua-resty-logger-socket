@@ -64,22 +64,19 @@ local function _flush()
         ngx.log(ngx.ERR, err)
         return nil, err
     end
-    --[[
-    if not config.connected then
-        if not config.connecting then
-            ngx.log(ngx.NOTICE, "try reconnect")
-            _connect()
-        else
-            -- just wait to next flush
-            ngx.log(ngx.NOTICE, "try flush next time")
-            return 0
-        end
-    end]]
 
     local sock  = config.sock
     local buf   = config.buffer
 
-    local bytes, err = sock:send(table.concat(buf.data))
+    -- TODO If send failed, these logs would be lost
+    local packet = table.concat(buf.data)
+    for i, v in ipairs(buf.data) do
+        buf.data[i] = nil
+    end
+
+    buf.size = 0
+
+    local bytes, err = sock:send(packet)
     if not bytes then
         -- sock:send always close current connection on error
         config.connected = false
@@ -87,11 +84,6 @@ local function _flush()
         return nil, err
     end
 
-    for i, v in ipairs(buf.data) do
-        buf.data[i] = nil
-    end
-
-    buf.size = 0
 
     config.flushing = false
 
