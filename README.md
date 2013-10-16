@@ -16,8 +16,6 @@ Synopsis
 ========
 
 
-    # you do not need the following line if you are using
-    # the ngx_openresty bundle:
     lua_package_path "/path/to/lua-resty-logger-socket/lib/?.lua;;";
 
     server {
