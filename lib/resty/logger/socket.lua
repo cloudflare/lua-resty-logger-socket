@@ -10,19 +10,20 @@ local _M = {}
 
 _M._VERSION = '0.01'
 
-local    buffer              = { size = 0, data = {}, index = 0 }
-local    flush_limit         = 4096         -- 4KB
-local    drop_limit          = 1048576      -- 1MB
-local    timeout             = 1000         -- 1 sec
-local    host
-local    port
-local    path
+local buffer                = { size = 0, data = {}, index = 0 }
+local flush_limit           = 4096         -- 4KB
+local drop_limit            = 1048576      -- 1MB
+local timeout               = 1000         -- 1 sec
+local host
+local port
+local path
+local log_subrequest        = true
 
-local    connecting
-local    connected
-local    flushing
-local    inited
-local    sock
+local connecting
+local connected
+local flushing
+local inited
+local sock
 
 
 local function _connect()
@@ -120,6 +121,8 @@ function _M.init(user_config)
             drop_limit = v
         elseif k == "timeout" then
             timeout = v
+        elseif k == "log_subrequest" then
+            log_subrequest = v
         end
     end
 
@@ -145,6 +148,10 @@ end
 function _M.log(msg)
     if not inited then
         return nil, "not initialized"
+    end
+
+    if not log_subrequest and ngx.is_subrequest then
+        return nil, "skip subrequest"
     end
 
     if (buffer.size + string.len(msg) > drop_limit) then
