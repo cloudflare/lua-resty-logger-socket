@@ -42,7 +42,6 @@ local function _connect()
 
     sock:settimeout(config.timeout)
 
-    print("connected:", tostring(sock))
     config.sock = sock
     config.connecting = false
     config.connected = true
@@ -60,7 +59,11 @@ end
 
 local function _flush()
 
-    _connect()
+    local ok, err = _connect()
+    if not ok then
+        ngx.log(ngx.ERR, err)
+        return nil, err
+    end
     --[[
     if not config.connected then
         if not config.connecting then
