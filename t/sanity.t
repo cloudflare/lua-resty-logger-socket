@@ -3,9 +3,9 @@
 use Test::Nginx::Socket;
 use Cwd qw(cwd);
 
-repeat_each(2);
+repeat_each(1);
 
-plan tests => repeat_each() * (3 * blocks()) + 24;
+plan tests => repeat_each() * (blocks() * 4 - 2);
 
 my $pwd = cwd();
 
@@ -42,15 +42,15 @@ __DATA__
     }
 --- request
 GET /t?a=1&b=2
---- wait: 1
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
 [error]
 --- tcp_query: /t?a=1&b=2
---- tcp_query_len: 10
 --- response_body
 foo
+
 
 
 === TEST 2: buffer log, no flush
@@ -73,13 +73,12 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 1
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
 [error]
 --- tcp_query:
---- tcp_query_len: 10
 --- response_body
 foo
 
@@ -101,15 +100,14 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- error_log
 not initialized
 --- tcp_query:
---- tcp_query_len: 10
 --- response_body
 foo
+
 
 
 === TEST 4: partial flush
@@ -138,18 +136,20 @@ foo
 --- no_error_log
 [error]
 --- tcp_query: aaaaaa
---- tcp_query_len: 6
 --- response_body eval
 ["foo\n","foo\n","foo\n"]
+--- SKIP
 
 
 
-=== Test 5: log subrequest
+=== TEST 5: log subrequest
 --- http_config eval: $::HttpConfig
 --- config
+    log_subrequest on;
     location /t {
         content_by_lua '
-            local res = ngx.location.capture("/main")
+        ngx.log(ngx.NOTICE, "uri:" .. ngx.var.uri, ngx.var.is_args, ngx.var.args)
+            local res = ngx.location.capture("/main?c=1&d=2")
             if res.status ~= 200 then
                 ngx.log(ngx.ERR, "capture /main failed")
             end
@@ -158,43 +158,43 @@ foo
     }
 
     location /main {
-        content_by_lua 'ngx.say("foo")';
+        content_by_lua '
+        ngx.log(ngx.NOTICE, "uri:" .. ngx.var.uri, ngx.var.is_args, ngx.var.args)
+        ngx.say("foo")';
     }
 
     log_by_lua '
+        ngx.log(ngx.NOTICE, "enter log_by_lua")
         local logger = require "resty.logger.socket"
         if not logger.inited then
             local ok, err = logger.init{
                 host = "127.0.0.1", port = 29999, flush_limit = 1 }
         end
 
-        local ok, err = logger.log(ngx.var.request_uri)
+        local ok, err = logger.log(ngx.var.uri)
         if not ok then
             ngx.log(ngx.ERR, "log failed")
         end
     ';
 --- request
 GET /t?a=1&b=2
---- wait: 1
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
 [error]
---- tcp_query
-/t?a=1&b=2
-/main?a=1&b=2
---- tcp_query_len: 24
+--- tcp_query: /main/t
 --- response_body
 foo
 
 
 
-=== Test 5: do not log subrequest
+=== TEST 6: do not log subrequest
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
         content_by_lua '
-            local res = ngx.location.capture("/main")
+            local res = ngx.location.capture("/main?c=1&d=2")
             if res.status ~= 200 then
                 ngx.log(ngx.ERR, "capture /main failed")
             end
@@ -207,6 +207,7 @@ foo
     }
 
     log_by_lua '
+        ngx.log(ngx.NOTICE, "enter log_by_lua")
         local logger = require "resty.logger.socket"
         if not logger.inited then
             local ok, err = logger.init{
@@ -220,12 +221,44 @@ foo
     ';
 --- request
 GET /t?a=1&b=2
---- wait: 1
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
 [error]
 --- tcp_query: /t?a=1&b=2
---- tcp_query_len: 10
 --- response_body
 foo
+
+
+
+=== TEST 7: connect timeout
+--- http_config eval: $::HttpConfig
+--- config
+    resolver 8.8.8.8;
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.inited then
+                local ok, err = logger.init{
+                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 0.01 }
+            end
+
+            local ok, err = logger.log(ngx.var.request_uri)
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 1
+--- tcp_listen: 29999
+--- tcp_reply:
+--- error_log
+errorlog
+--- tcp_query:
+--- response_body
+foo
+--- SKIP
