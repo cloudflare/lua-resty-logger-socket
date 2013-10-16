@@ -17,7 +17,6 @@ local timeout               = 1000         -- 1 sec
 local host
 local port
 local path
-local log_subrequest        = true
 
 local connecting
 local connected
@@ -72,6 +71,7 @@ end
 
 local function _flush()
 
+    ngx.log(ngx.NOTICE, "_flush")
     local ok, err = _connect()
     if not ok then
         ngx_log(ngx.ERR, err)
@@ -88,6 +88,7 @@ local function _flush()
 
     buf.size = 0
 
+    ngx.log(ngx.NOTICE, "_flush:", packet)
     local bytes, err = sock:send(packet)
     if not bytes then
         -- sock:send always close current connection on error
@@ -121,8 +122,6 @@ function _M.init(user_config)
             drop_limit = v
         elseif k == "timeout" then
             timeout = v
-        elseif k == "log_subrequest" then
-            log_subrequest = v
         end
     end
 
@@ -150,9 +149,7 @@ function _M.log(msg)
         return nil, "not initialized"
     end
 
-    if not log_subrequest and ngx.is_subrequest then
-        return nil, "skip subrequest"
-    end
+    ngx.log(ngx.NOTICE, "log message " .. msg)
 
     if (buffer.size + string.len(msg) > drop_limit) then
         return nil, "logger buffer is full, this log would be dropped"
@@ -164,6 +161,7 @@ function _M.log(msg)
     end
 
     if (buffer.size > flush_limit and not flushing) then
+        ngx.log(ngx.NOTICE, "start flushing")
         flushing = true
         timer_at(0, _flush)
     end
