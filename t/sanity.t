@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(1);
 
-plan tests => repeat_each() * (blocks() * 4 - 3 + 6);
+plan tests => repeat_each() * (blocks() * 4 - 2 + 6);
 
 my $pwd = cwd();
 
@@ -228,40 +228,7 @@ foo
 
 
 
-=== TEST 7: connect timeout
---- http_config eval: $::HttpConfig
---- config
-    resolver 8.8.8.8;
-    location /t {
-        content_by_lua 'ngx.say("foo")';
-        log_by_lua '
-            local logger = require "resty.logger.socket"
-            if not logger.inited then
-                local ok, err = logger.init{
-                    -- timeout 1ms
-                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 1 }
-            end
-
-            local ok, err = logger.log(ngx.var.request_uri)
-            if not ok then
-                ngx.log(ngx.ERR, err)
-            end
-        ';
-    }
---- request
-GET /t?a=1&b=2
---- wait: 0.5
---- tcp_listen: 29999
---- tcp_reply:
---- error_log
-tcp socket connect timed out
---- tcp_query:
---- response_body
-foo
-
-
-
-=== TEST 8: partial flush
+=== TEST 7: partial flush
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
