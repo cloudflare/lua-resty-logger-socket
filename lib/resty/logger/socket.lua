@@ -60,20 +60,6 @@ local function _connect()
     return true
 end
 
-local function _write_buffer(msg)
-    local buf = buffer
-    local string_msg = msg
-
-    if type(msg) ~= "string" then
-        string_msg = tostring(msg)
-    end
-
-    table.insert(buf.data, string_msg)
-    buf.size = buf.size + #string_msg
-
-    return buf.size
-end
-
 local function _do_flush()
     local ok, err = _connect()
     if not ok then
@@ -123,6 +109,19 @@ local function _flush()
     return true
 end
 
+local function _write_buffer(msg)
+    table.insert(buffer.data, msg)
+    buffer.size = buffer.size + #msg
+
+    if (buffer.size > flush_limit) then
+        ngx.log(ngx.NOTICE, "start flushing")
+        timer_at(0, _flush)
+    end
+
+    return buffer.size
+end
+
+
 function _M.init(user_config)
     if (type(user_config) ~= "table") then
         return nil, "user_config must be a table"
@@ -168,20 +167,19 @@ function _M.log(msg)
         return nil, "not initialized"
     end
 
+    if type(msg) ~= "string" then
+        msg = tostring(msg)
+    end
+
     ngx.log(ngx.NOTICE, "log message " .. msg)
 
-    if (buffer.size + string.len(msg) > drop_limit) then
+    if (buffer.size + #msg > drop_limit) then
         return nil, "logger buffer is full, this log would be dropped"
     end
 
     local ok, err = _write_buffer(msg)
     if not ok then
         return nil, err
-    end
-
-    if (buffer.size > flush_limit) then
-        ngx.log(ngx.NOTICE, "start flushing")
-        timer_at(0, _flush)
     end
 
     return true
