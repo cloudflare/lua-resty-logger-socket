@@ -10,7 +10,6 @@ local _M = {}
 
 _M._VERSION = '0.01'
 
---local buffer                = { size = 0, data = {}, index = 0 }
 local buffer_size           = 0
 local buffer_data           = {}
 local buffer_index          = 0
@@ -72,11 +71,12 @@ local function _do_flush()
 
     -- TODO If send failed, these logs would be lost
     local packet = table.concat(buffer_data)
-    for i, v in ipairs(buffer_data) do
+
+    for i=1, buffer_index do
         buffer_data[i] = nil
     end
-
     buffer_size = 0
+    buffer_index = 0
 
     ngx.log(ngx.NOTICE, "_flush:", packet)
     local bytes, err = sock:send(packet)
@@ -111,7 +111,10 @@ local function _flush()
 end
 
 local function _write_buffer(msg)
-    table.insert(buffer_data, msg)
+    buffer_index = buffer_index + 1
+    buffer_data[buffer_index] = msg
+
+    --table.insert(buffer_data, msg)
     buffer_size = buffer_size + #msg
 
     if (buffer_size > flush_limit) then
