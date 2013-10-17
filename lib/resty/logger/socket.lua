@@ -49,7 +49,6 @@ local function _connect()
 
     connecting = true
 
-    ngx_log(ngx.NOTICE, "_connect started")
     -- host/port and path config have already been checked in init()
     if host and port then
         ok, err =  sock:connect(host, port)
@@ -67,7 +66,6 @@ local function _connect()
         return nil, err
     end
 
-    ngx_log(ngx.NOTICE, "_connect connected")
 
     connecting = false
     connected = true
@@ -90,7 +88,6 @@ local function _do_flush()
     buffer_size = 0
     buffer_index = 0
 
-    ngx_log(ngx.NOTICE, "_flush:", packet)
     local bytes, err = sock:send(packet)
     if not bytes then
         retry_send = retry_send + 1
@@ -102,13 +99,11 @@ local function _do_flush()
         connected = false
         return nil, err
     end
-    ngx_log(ngx.NOTICE, "flush ok")
 
     return true
 end
 
 local function _flush()
-    ngx_log(ngx.NOTICE, "_flush")
     if flushing then
         -- do this later
         return true
@@ -135,7 +130,6 @@ local function _write_buffer(msg)
     buffer_size = buffer_size + #msg
 
     if (buffer_size > flush_limit) then
-        ngx_log(ngx.NOTICE, "start flushing")
         timer_at(0, _flush)
     end
 
@@ -194,8 +188,6 @@ function _M.log(msg)
     if type(msg) ~= "string" then
         msg = tostring(msg)
     end
-
-    ngx_log(ngx.NOTICE, "log message " .. msg)
 
     if (buffer_size + #msg > drop_limit) then
         return nil, "logger buffer is full, this log would be dropped"
