@@ -10,7 +10,10 @@ local _M = {}
 
 _M._VERSION = '0.01'
 
-local buffer                = { size = 0, data = {}, index = 0 }
+--local buffer                = { size = 0, data = {}, index = 0 }
+local buffer_size           = 0
+local buffer_data           = {}
+local buffer_index          = 0
 local flush_limit           = 4096         -- 4KB
 local drop_limit            = 1048576      -- 1MB
 local timeout               = 1000         -- 1 sec
@@ -67,15 +70,13 @@ local function _do_flush()
         return nil, err
     end
 
-    local buf   = buffer
-
     -- TODO If send failed, these logs would be lost
-    local packet = table.concat(buf.data)
-    for i, v in ipairs(buf.data) do
-        buf.data[i] = nil
+    local packet = table.concat(buffer_data)
+    for i, v in ipairs(buffer_data) do
+        buffer_data[i] = nil
     end
 
-    buf.size = 0
+    buffer_size = 0
 
     ngx.log(ngx.NOTICE, "_flush:", packet)
     local bytes, err = sock:send(packet)
@@ -110,15 +111,15 @@ local function _flush()
 end
 
 local function _write_buffer(msg)
-    table.insert(buffer.data, msg)
-    buffer.size = buffer.size + #msg
+    table.insert(buffer_data, msg)
+    buffer_size = buffer_size + #msg
 
-    if (buffer.size > flush_limit) then
+    if (buffer_size > flush_limit) then
         ngx.log(ngx.NOTICE, "start flushing")
         timer_at(0, _flush)
     end
 
-    return buffer.size
+    return buffer_size
 end
 
 
@@ -173,7 +174,7 @@ function _M.log(msg)
 
     ngx.log(ngx.NOTICE, "log message " .. msg)
 
-    if (buffer.size + #msg > drop_limit) then
+    if (buffer_size + #msg > drop_limit) then
         return nil, "logger buffer is full, this log would be dropped"
     end
 
