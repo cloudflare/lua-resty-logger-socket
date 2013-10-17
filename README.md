@@ -11,6 +11,14 @@ This library is under heavy development.
 Description
 ===========
 
+This lua library is a remote logging module for ngx_lua:
+
+http://wiki.nginx.org/HttpLuaModule
+
+This Lua library takes advantage of ngx_lua's cosocket API, which ensures
+100% nonblocking behavior.
+
+Note that at least [ngx_lua 0.8.0](https://github.com/chaoslawful/lua-nginx-module/tags).
 
 Synopsis
 ========
@@ -23,7 +31,7 @@ Synopsis
             log_by_lua '
                 log_by_lua '
                     local logger = require "resty.logger.socket"
-                    if not logger.initted then
+                    if not logger.initted() then
                         local ok, err = logger.init{
                             host = 'xxx',
                             port = 1234,
@@ -41,17 +49,51 @@ Synopsis
 Methods
 =======
 
+Logger module is designed to be shared inside an nginx worker process by different threads. So currently, only one remote logging server is suppered. All thread should use the same remote logging server.
+
 init
 ----
 `syntax: ok, err = logger.init(user_config)`
 
-Initialize logger with user config.
+Initialize logger with user config. Logger must be inited before use. If you does not initialize logger before, you would get an error message.
+
+Available user configurations are listed as follows:
+
+`flush_limit`
+
+If buffered log size plus current log size reaches(>=) this limit, buffered log would be written to logging server. Default flush_limit is 4096(4KB).
+
+`drop_limit`
+
+If buffered log size plush current log size is larger than this limit, current log would be dropped because of limited buffer size. Default drop_limit is
+1048576(1MB).
+
+`timeout`
+
+Sets the timeout (in ms) protection for subsequent operations, including the *connect* method. Default value is 1000(1 sec).
+
+`host`
+
+logging server host.
+
+`port`
+
+logging server port.
+
+`path`
+
+If logging server uses unix domain socket, path is the socket path. Note that host/port and path can't both be empty. At least one must be supplied.
+
+inited()
+--------
+`syntax: inited = logger.inited()`
+Get a value describing whether this module has been inited.
 
 log
 ---
 `syntax: ok, err = logger.log(msg)`
 
-Log message to remote log server.
+Log message to remote logging server.
 
 TODO
 ====

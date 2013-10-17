@@ -29,7 +29,7 @@ __DATA__
         content_by_lua 'ngx.say("foo")';
         log_by_lua '
             local logger = require "resty.logger.socket"
-            if not logger.inited then
+            if not logger.inited() then
                 local ok, err = logger.init{
                     host = "127.0.0.1", port = 29999, flush_limit = 1 }
             end
@@ -60,7 +60,7 @@ foo
         content_by_lua 'ngx.say("foo")';
         log_by_lua '
             local logger = require "resty.logger.socket"
-            if not logger.inited then
+            if not logger.inited() then
                 local ok, err = logger.init{
                     host = "127.0.0.1", port = 29999, flush_limit = 1 }
             end
@@ -91,7 +91,7 @@ foo
         content_by_lua 'ngx.say("foo")';
         log_by_lua '
             local logger = require "resty.logger.socket"
-            if not logger.inited then
+            if not logger.inited() then
                 local ok, err = logger.init{
                     host = "127.0.0.1", port = 29999, flush_limit = 500 }
             end
@@ -115,7 +115,7 @@ foo
 
 
 
-=== TEST 4: not inited
+=== TEST 4: not inited()
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -162,7 +162,7 @@ foo
 
     log_by_lua '
         local logger = require "resty.logger.socket"
-        if not logger.inited then
+        if not logger.inited() then
             local ok, err = logger.init{
                 host = "127.0.0.1", port = 29999, flush_limit = 6 }
         end
@@ -206,7 +206,7 @@ foo
 
     log_by_lua '
         local logger = require "resty.logger.socket"
-        if not logger.inited then
+        if not logger.inited() then
             local ok, err = logger.init{
                 host = "127.0.0.1", port = 29999, flush_limit = 1 }
         end
@@ -250,7 +250,7 @@ foo
     log_by_lua '
         ngx.log(ngx.NOTICE, "enter log_by_lua")
         local logger = require "resty.logger.socket"
-        if not logger.inited then
+        if not logger.inited() then
             local ok, err = logger.init{
                 host = "127.0.0.1", port = 29999, flush_limit = 1, log_subrequest = false }
         end
@@ -280,7 +280,7 @@ foo
         content_by_lua 'ngx.say("foo")';
         log_by_lua '
             local logger = require "resty.logger.socket"
-            if not logger.inited then
+            if not logger.inited() then
                 local ok, err = logger.init{
                     host = "127.0.0.1", port = 29999, flush_limit = 5 }
             end

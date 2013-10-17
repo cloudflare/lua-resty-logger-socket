@@ -10,16 +10,18 @@ local _M = {}
 
 _M._VERSION = '0.01'
 
-local buffer_size           = 0
-local buffer_data           = {}
-local buffer_index          = 0
+-- user config
 local flush_limit           = 4096         -- 4KB
 local drop_limit            = 1048576      -- 1MB
 local timeout               = 1000         -- 1 sec
-local flush_interval        = 60           -- 5 sec
 local host
 local port
 local path
+
+-- internal variables
+local buffer_size           = 0
+local buffer_data           = {}
+local buffer_index          = 0
 
 local connecting
 local connected
@@ -28,7 +30,7 @@ local retry_send            = 0
 local max_retry_times       = 5
 local retry_interval        = 0.1          -- 0.1s
 local flushing
-local inited
+local logger_inited
 local sock
 
 
@@ -109,8 +111,6 @@ local function _flush()
     ngx_log(ngx.NOTICE, "_flush")
     if flushing then
         -- do this later
-        ngx_log(ngx.NOTICE, "_flush later")
-        ngx.timer.at(flush_interval, _flush)
         return true
     end
 
@@ -180,14 +180,14 @@ function _M.init(user_config)
     retry_connect = 0
     retry_send = 0
 
-    inited = true
+    logger_inited = true
 
     --ngx.timer.at(0, _connect)
-    return inited
+    return logger_inited
 end
 
 function _M.log(msg)
-    if not inited then
+    if not logger_inited then
         return nil, "not initialized"
     end
 
@@ -209,4 +209,9 @@ function _M.log(msg)
     return true
 end
 
+function _M.inited()
+    return logger_inited
+end
+
 return _M
+

@@ -50,7 +50,7 @@ __DATA__
         content_by_lua 'ngx.say("foo")';
         log_by_lua '
             local logger = require "resty.logger.socket"
-            if not logger.inited then
+            if not logger.inited() then
                 local ok, err = logger.init{
                     -- timeout 1ms
                     host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 1 }
@@ -83,7 +83,7 @@ foo
         content_by_lua 'ngx.say("foo")';
         log_by_lua '
             local logger = require "resty.logger.socket"
-            if not logger.inited then
+            if not logger.inited() then
                 local ok, err = logger.init{
                     host = "127.0.0.1", port = 29999, flush_limit = 1, timeout = 100 }
             end
