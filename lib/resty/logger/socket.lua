@@ -24,7 +24,9 @@ local path
 local connecting
 local connected
 local retry_connect         = 0
+local retry_send            = 0
 local max_retry_times       = 5
+local retry_interval        = 0.1          -- 0.1s
 local flushing
 local inited
 local sock
@@ -57,8 +59,9 @@ local function _connect()
         retry_connect = retry_connect + 1
         if retry_connect <= max_retry_times then
             ngx_log(ngx.WARN, "retry connecting to log server")
-            ngx.timer.at(0.1, _connect) -- retry after 0.1 s
+            ngx.timer.at(retry_interval, _connect)
         end
+
         return nil, err
     end
 
@@ -88,6 +91,11 @@ local function _do_flush()
     ngx_log(ngx.NOTICE, "_flush:", packet)
     local bytes, err = sock:send(packet)
     if not bytes then
+        retry_send = retry_send + 1
+        if retry_send <= max_retry_times then
+            ngx_log(ngx.WARN, "retry send log")
+            ngx.timer.at(retry_interval, _do_flush)
+        end
         -- sock:send always close current connection on error
         connected = false
         ngx_log(ngx.ERR, err)
@@ -171,6 +179,7 @@ function _M.init(user_config)
 
     connected = false
     retry_connect = 0
+    retry_send = 0
 
     inited = true
 
