@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(1);
 
-plan tests => repeat_each() * (blocks() * 4 - 2 + 6);
+plan tests => repeat_each() * (blocks() * 4 - 1 + 6);
 
 my $pwd = cwd();
 
@@ -185,7 +185,52 @@ foo
 
 
 
-=== TEST 6: do not log subrequest
+=== TEST 6: log subrequest, flush twice
+--- http_config eval: $::HttpConfig
+--- config
+    log_subrequest on;
+    location /t {
+        content_by_lua '
+            local res = ngx.location.capture("/main?c=1&d=2")
+            if res.status ~= 200 then
+                ngx.log(ngx.ERR, "capture /main failed")
+            end
+            ngx.print(res.body)
+        ';
+    }
+
+    location /main {
+        content_by_lua '
+        ngx.say("foo")';
+    }
+
+    log_by_lua '
+        local logger = require "resty.logger.socket"
+        if not logger.inited then
+            local ok, err = logger.init{
+                host = "127.0.0.1", port = 29999, flush_limit = 1 }
+        end
+
+        local ok, err = logger.log(ngx.var.uri)
+        if not ok then
+            ngx.log(ngx.ERR, "log failed")
+        end
+    ';
+--- request
+GET /t?a=1&b=2
+--- wait: 1
+--- tcp_listen: 29999
+--- tcp_reply:
+--- no_error_log
+[error]
+--- tcp_query: /main/t
+--- tcp_query_len: 7
+--- response_body
+foo
+
+
+
+=== TEST 7: do not log subrequest
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -228,7 +273,7 @@ foo
 
 
 
-=== TEST 7: partial flush
+=== TEST 8: partial flush
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
