@@ -23,6 +23,8 @@ local path
 
 local connecting
 local connected
+local retry_connect         = 0
+local max_retry_times       = 5
 local flushing
 local inited
 local sock
@@ -43,7 +45,7 @@ local function _connect()
 
     connecting = true
 
-    ngx.log(ngx.NOTICE, "_connect started")
+    ngx_log(ngx.NOTICE, "_connect started")
     -- host/port and path config have already been checked in init()
     if host and port then
         ok, err =  sock:connect(host, port)
@@ -52,10 +54,15 @@ local function _connect()
     end
 
     if not ok then
+        retry_connect = retry_connect + 1
+        if retry_connect <= max_retry_times then
+            ngx_log(ngx.WARN, "retry connecting to log server")
+            ngx.timer.at(0.1, _connect) -- retry after 0.1 s
+        end
         return nil, err
     end
 
-    ngx.log(ngx.NOTICE, "_connect connected")
+    ngx_log(ngx.NOTICE, "_connect connected")
 
     connecting = false
     connected = true
@@ -78,7 +85,7 @@ local function _do_flush()
     buffer_size = 0
     buffer_index = 0
 
-    ngx.log(ngx.NOTICE, "_flush:", packet)
+    ngx_log(ngx.NOTICE, "_flush:", packet)
     local bytes, err = sock:send(packet)
     if not bytes then
         -- sock:send always close current connection on error
@@ -86,14 +93,16 @@ local function _do_flush()
         ngx_log(ngx.ERR, err)
         return nil, err
     end
-    ngx.log(ngx.NOTICE, "flush ok")
+    ngx_log(ngx.NOTICE, "flush ok")
+
+    return true
 end
 
 local function _flush()
-    ngx.log(ngx.NOTICE, "_flush")
+    ngx_log(ngx.NOTICE, "_flush")
     if flushing then
         -- do this later
-        ngx.log(ngx.NOTICE, "_flush later")
+        ngx_log(ngx.NOTICE, "_flush later")
         ngx.timer.at(flush_interval, _flush)
         return true
     end
@@ -101,6 +110,7 @@ local function _flush()
     flushing = true
     local ok, err = _do_flush()
     if not ok then
+        ngx_log(ngx.ERR, err)
         return nil, err
     end
 
@@ -118,7 +128,7 @@ local function _write_buffer(msg)
     buffer_size = buffer_size + #msg
 
     if (buffer_size > flush_limit) then
-        ngx.log(ngx.NOTICE, "start flushing")
+        ngx_log(ngx.NOTICE, "start flushing")
         timer_at(0, _flush)
     end
 
@@ -160,6 +170,8 @@ function _M.init(user_config)
     connecting = false
 
     connected = false
+    retry_connect = 0
+
     inited = true
 
     --ngx.timer.at(0, _connect)
@@ -175,7 +187,7 @@ function _M.log(msg)
         msg = tostring(msg)
     end
 
-    ngx.log(ngx.NOTICE, "log message " .. msg)
+    ngx_log(ngx.NOTICE, "log message " .. msg)
 
     if (buffer_size + #msg > drop_limit) then
         return nil, "logger buffer is full, this log would be dropped"
