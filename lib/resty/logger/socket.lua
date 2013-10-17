@@ -98,7 +98,6 @@ local function _do_flush()
         end
         -- sock:send always close current connection on error
         connected = false
-        ngx_log(ngx.ERR, err)
         return nil, err
     end
     ngx_log(ngx.NOTICE, "flush ok")

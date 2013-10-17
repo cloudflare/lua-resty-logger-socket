@@ -25,7 +25,7 @@ use Cwd qw(cwd);
 
 repeat_each(1);
 
-plan tests => repeat_each() * (blocks() * 4 - 2);
+plan tests => repeat_each() * (blocks() * 4 );
 
 my $pwd = cwd();
 
@@ -69,6 +69,7 @@ GET /t?a=1&b=2
 --- tcp_reply:
 --- error_log
 tcp socket connect timed out
+retry connect
 --- tcp_query:
 --- response_body
 foo
@@ -101,8 +102,7 @@ GET /t?a=1&b=2
 --- tcp_query_len: 15
 --- error_log
 lua tcp socket write timed out
+retry send
 --- tcp_query:
 --- response_body
 foo
-
-
