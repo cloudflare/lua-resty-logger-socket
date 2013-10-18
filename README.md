@@ -84,7 +84,7 @@ logging server port.
 
 If logging server uses unix domain socket, path is the socket path. Note that host/port and path can't both be empty. At least one must be supplied.
 
-inited()
+inited
 --------
 `syntax: inited = logger.inited()`
 Get a value describing whether this module has been inited.
