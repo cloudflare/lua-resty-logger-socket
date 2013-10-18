@@ -1,10 +1,21 @@
 -- Copyright (C) 2013 Jiale Zhi (calio), Cloudflare Inc.
 
-local tcp = ngx.socket.tcp
-local timer_at = ngx.timer.at
-local ngx_log = ngx.log
+local concat                = table.concat
+local tcp                   = ngx.socket.tcp
+local timer_at              = ngx.timer.at
+local ngx_log               = ngx.log
 
-local _M = {}
+local NOTICE                = ngx.NOTICE
+local WARN                  = ngx.WARN
+local ERR                   = ngx.ERR
+
+
+local ok, new_tab = pcall(require, "table.new")
+if not ok then
+    new_tab = function (narr, nrec) return {} end
+end
+
+local _M = new_tab(0, 4)
 
 
 _M._VERSION = '0.01'
@@ -19,7 +30,7 @@ local path
 
 -- internal variables
 local buffer_size           = 0
-local buffer_data           = {}
+local buffer_data           = new_tab(20000, 0)
 local buffer_index          = 0
 
 local connecting
@@ -39,7 +50,7 @@ local function _connect()
     if not connected then
         sock, err = tcp()
         if not sock then
-            ngx_log(ngx.ERROR, err)
+            ngx_log(ERR, err)
             return nil, err
         end
 
@@ -58,8 +69,11 @@ local function _connect()
     if not ok then
         retry_connect = retry_connect + 1
         if retry_connect <= max_retry_times then
-            ngx_log(ngx.WARN, "retry connecting to log server")
-            ngx.timer.at(retry_interval, _connect)
+            ngx_log(WARN, "retry connecting to log server")
+            local ok, err = timer_at(retry_interval, _connect)
+            if not ok then
+                ngx_log(WARN, err)
+            end
         end
 
         return nil, err
@@ -74,14 +88,14 @@ end
 local function _do_flush()
     local ok, err = _connect()
     if not ok then
-        ngx_log(ngx.ERR, err)
+        ngx_log(ERR, err)
         return nil, err
     end
 
     -- TODO If send failed, these logs would be lost
-    local packet = table.concat(buffer_data)
+    local packet = concat(buffer_data)
 
-    for i=1, buffer_index do
+    for i = 1, buffer_index do
         buffer_data[i] = nil
     end
     buffer_size = 0
@@ -91,8 +105,11 @@ local function _do_flush()
     if not bytes then
         retry_send = retry_send + 1
         if retry_send <= max_retry_times then
-            ngx_log(ngx.WARN, "retry send log")
-            ngx.timer.at(retry_interval, _do_flush)
+            ngx_log(WARN, "retry send log")
+            ok, err = timer_at(retry_interval, _do_flush)
+            if not ok then
+                ngx_log(ERR, err)
+            end
         end
         -- sock:send always close current connection on error
         connected = false
@@ -111,12 +128,16 @@ local function _flush()
     flushing = true
     local ok, err = _do_flush()
     if not ok then
-        ngx_log(ngx.ERR, err)
+        ngx_log(ERR, err)
         return nil, err
     end
 
 
-    sock:setkeepalive(0, 10)
+    ok, err = sock:setkeepalive(0, 10)
+    if not ok then
+        ngx_log(ERR, err)
+    end
+
     flushing = false
     return true
 end
@@ -125,16 +146,17 @@ local function _write_buffer(msg)
     buffer_index = buffer_index + 1
     buffer_data[buffer_index] = msg
 
-    --table.insert(buffer_data, msg)
     buffer_size = buffer_size + #msg
 
     if (buffer_size > flush_limit) then
-        timer_at(0, _flush)
+        local ok, err = timer_at(0, _flush)
+        if not ok then
+            ngx_log(ERR, err)
+        end
     end
 
     return buffer_size
 end
-
 
 function _M.init(user_config)
     if (type(user_config) ~= "table") then
@@ -175,7 +197,6 @@ function _M.init(user_config)
 
     logger_inited = true
 
-    --ngx.timer.at(0, _connect)
     return logger_inited
 end
 
