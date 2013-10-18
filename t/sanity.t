@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(1);
 
-plan tests => repeat_each() * (blocks() * 4 - 1 + 6);
+plan tests => repeat_each() * (blocks() * 4 - 1 + 2);
 
 my $pwd = cwd();
 
@@ -36,7 +36,7 @@ __DATA__
 
             local ok, err = logger.log(ngx.var.request_uri)
             if not ok then
-                ngx.log(ngx.ERR, "log failed")
+                ngx.log(ngx.ERR, err)
             end
         ';
     }
@@ -72,7 +72,7 @@ foo
 
             local ok, err = logger.log(ngx.var.request_uri)
             if not ok then
-                ngx.log(ngx.ERR, "log failed:", err)
+                ngx.log(ngx.ERR, err)
             end
         ';
     }
@@ -103,7 +103,7 @@ foo
 
             local ok, err = logger.log(10)
             if not ok then
-                ngx.log(ngx.ERR, "log failed")
+                ngx.log(ngx.ERR, err)
             end
         ';
     }
@@ -134,7 +134,7 @@ foo
 
             local ok, err = logger.log(ngx.var.request_uri)
             if not ok then
-                ngx.log(ngx.ERR, "log failed")
+                ngx.log(ngx.ERR, err)
             end
         ';
     }
@@ -205,7 +205,7 @@ foo
 
         local ok, err = logger.log(ngx.var.uri)
         if not ok then
-            ngx.log(ngx.ERR, "log failed")
+            ngx.log(ngx.ERR, err)
         end
     ';
 --- request
@@ -249,7 +249,7 @@ foo
 
         local ok, err = logger.log(ngx.var.uri)
         if not ok then
-            ngx.log(ngx.ERR, "log failed")
+            ngx.log(ngx.ERR, err)
         end
     ';
 --- request
@@ -293,7 +293,7 @@ foo
 
         local ok, err = logger.log(ngx.var.request_uri)
         if not ok then
-            ngx.log(ngx.ERR, "log failed")
+            ngx.log(ngx.ERR, err)
         end
     ';
 --- request
@@ -323,7 +323,7 @@ foo
 
             local ok, err = logger.log("aaa")
             if not ok then
-                ngx.log(ngx.ERR, "log failed")
+                ngx.log(ngx.ERR, err)
             end
         ';
     }
@@ -337,3 +337,149 @@ foo
 --- tcp_query: aaaaaa
 --- response_body eval
 ["foo\n","foo\n","foo\n"]
+
+
+
+=== TEST 10: bad user config
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.inited() then
+                local ok, err = logger.init("hello")
+                if not ok then
+                    ngx.log(ngx.ERR, err)
+                    return
+                end
+
+            end
+
+            local ok, err = logger.log(ngx.var.request_uri)
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 0.1
+--- error_log
+user_config must be a table
+--- response_body
+foo
+
+
+
+=== TEST 11: bad user config: no host/port or path
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.inited() then
+                local ok, err = logger.init{
+                    flush_limit = 1,
+                    drop_limit = 2,
+                }
+                if not ok then
+                    ngx.log(ngx.ERR, err)
+                    return
+                end
+            end
+
+            local ok, err = logger.log(ngx.var.request_uri)
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 0.1
+--- error_log
+no logging server configured. Need host/port or path.
+--- response_body
+foo
+
+
+
+=== TEST 12: bad user config: flush_limit > drop_limit
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.inited() then
+                local ok, err = logger.init{
+                    flush_limit = 2,
+                    drop_limit = 1,
+                    path = "logger_test.sock",
+                }
+                if not ok then
+                    ngx.log(ngx.ERR, err)
+                    return
+                end
+            end
+
+            local ok, err = logger.log(ngx.var.request_uri)
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 0.1
+--- error_log
+flush_limit should < drop_limit
+--- response_body
+foo
+
+
+
+=== TEST 13: drop log test
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.inited() then
+                local ok, err = logger.init{
+                    path = "logger_test.sock",
+                    drop_limit = 5,
+                    flush_limit = 3,
+                }
+            end
+
+            local ok, err = logger.log("000")
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+
+            local ok, err = logger.log("aaaaa")
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+
+            local ok, err = logger.log("bbb")
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 0.1
+--- tcp_listen: logger_test.sock
+--- tcp_query: 000bbb
+--- tcp_query_len: 6
+--- tcp_reply:
+--- error_log
+logger buffer is full, this log would be dropped
+--- response_body
+foo

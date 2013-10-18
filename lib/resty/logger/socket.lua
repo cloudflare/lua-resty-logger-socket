@@ -152,6 +152,7 @@ local function _write_buffer(msg)
         local ok, err = timer_at(0, _flush)
         if not ok then
             ngx_log(ERR, err)
+            return nil, err
         end
     end
 
