@@ -23,7 +23,7 @@ BEGIN {
 use Test::Nginx::Socket;
 use Cwd qw(cwd);
 
-repeat_each(2);
+repeat_each(1);
 
 plan tests => repeat_each() * (blocks() * 4 + 2);
 
@@ -37,6 +37,8 @@ our $HttpConfig = qq{
 $ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
 
 no_long_string();
+
+log_level('debug');
 
 run_tests();
 

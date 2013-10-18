@@ -7,7 +7,9 @@ local ngx_log               = ngx.log
 local type                  = type
 local pairs                 = pairs
 local tostring              = tostring
+local debug                 = ngx.config.debug
 
+local DEBUG                 = ngx.DEBUG
 local NOTICE                = ngx.NOTICE
 local WARN                  = ngx.WARN
 local ERR                   = ngx.ERR
@@ -72,10 +74,14 @@ local function _connect()
     if not ok then
         retry_connect = retry_connect + 1
         if retry_connect <= max_retry_times then
-            ngx_log(WARN, "retry connecting to log server")
+            if debug then
+                ngx_log(DEBUG, "retry connecting to log server")
+            end
             local ok, err = timer_at(retry_interval, _connect)
             if not ok then
-                ngx_log(WARN, err)
+                if debug then
+                    ngx_log(WARN, err)
+                end
             end
         end
 
@@ -108,7 +114,9 @@ local function _do_flush()
     if not bytes then
         retry_send = retry_send + 1
         if retry_send <= max_retry_times then
-            ngx_log(WARN, "retry send log")
+            if debug then
+                ngx_log(DEBUG, "retry send log")
+            end
             ok, err = timer_at(retry_interval, _do_flush)
             if not ok then
                 ngx_log(ERR, err)
