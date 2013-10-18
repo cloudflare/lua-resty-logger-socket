@@ -4,6 +4,9 @@ local concat                = table.concat
 local tcp                   = ngx.socket.tcp
 local timer_at              = ngx.timer.at
 local ngx_log               = ngx.log
+local type                  = type
+local pairs                 = pairs
+local tostring              = tostring
 
 local NOTICE                = ngx.NOTICE
 local WARN                  = ngx.WARN
