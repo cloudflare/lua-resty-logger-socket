@@ -25,7 +25,7 @@ use Cwd qw(cwd);
 
 repeat_each(1);
 
-plan tests => repeat_each() * (blocks() * 4 );
+plan tests => repeat_each() * (blocks() * 4 + 2);
 
 my $pwd = cwd();
 
@@ -104,5 +104,40 @@ GET /t?a=1&b=2
 lua tcp socket write timed out
 retry send
 --- tcp_query:
+--- response_body
+foo
+
+
+
+=== TEST 3: risk condition
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.inited() then
+                local ok, err = logger.init{
+                    host = "127.0.0.1", port = 29999, flush_limit = 1 }
+            end
+
+            local ok, err = logger.log("1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950")
+            local ok, err = logger.log("1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950")
+            if not ok then
+                ngx.log(ngx.ERR, "log failed")
+            end
+        ';
+    }
+--- request
+GET /t
+--- wait: 0.5
+--- tcp_listen: 29999
+--- tcp_reply:
+--- tcp_query_len: 15
+--- no_error_log
+[error]
+[warn]
+--- tcp_query: 12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849501234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950
+--- tcp_query_len: 182
 --- response_body
 foo
