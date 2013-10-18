@@ -1,6 +1,5 @@
 -- Copyright (C) 2013 Jiale Zhi (calio), Cloudflare Inc.
 
-
 local tcp = ngx.socket.tcp
 local timer_at = ngx.timer.at
 local ngx_log = ngx.log
@@ -53,7 +52,7 @@ local function _connect()
     if host and port then
         ok, err =  sock:connect(host, port)
     elseif path then
-        ok, err =  sock:connect(path)
+        ok, err =  sock:connect("unix:" .. path)
     end
 
     if not ok then
@@ -158,7 +157,7 @@ function _M.init(user_config)
         end
     end
 
-    if not (host and port) and not host then
+    if not (host and port) and not path then
         return nil, "no logging server configured. Need host/port or path."
     end
 

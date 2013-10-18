@@ -53,7 +53,43 @@ foo
 
 
 
-=== TEST 2: log number
+=== TEST 2: instant flush, unix domain socket
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.inited() then
+                local ok, err = logger.init{
+                    flush_limit = 1,
+                    path = "logger_test.sock" }
+                if not ok then
+                    ngx.log(ngx.ERR, err)
+                    return
+                end
+            end
+
+            local ok, err = logger.log(ngx.var.request_uri)
+            if not ok then
+                ngx.log(ngx.ERR, "log failed:", err)
+            end
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 1
+--- tcp_listen: logger_test.sock
+--- tcp_reply:
+--- no_error_log
+[error]
+--- tcp_query: /t?a=1&b=2
+--- response_body
+foo
+
+
+
+=== TEST 3: log number
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -84,7 +120,7 @@ foo
 
 
 
-=== TEST 3: buffer log, no flush
+=== TEST 4: buffer log, no flush
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -115,7 +151,7 @@ foo
 
 
 
-=== TEST 4: not inited()
+=== TEST 5: not inited()
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -141,7 +177,7 @@ foo
 
 
 
-=== TEST 5: log subrequest
+=== TEST 6: log subrequest
 --- http_config eval: $::HttpConfig
 --- config
     log_subrequest on;
@@ -185,7 +221,7 @@ foo
 
 
 
-=== TEST 6: log subrequest, flush twice
+=== TEST 7: log subrequest, flush twice
 --- http_config eval: $::HttpConfig
 --- config
     log_subrequest on;
@@ -230,7 +266,7 @@ foo
 
 
 
-=== TEST 7: do not log subrequest
+=== TEST 8: do not log subrequest
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -273,7 +309,7 @@ foo
 
 
 
-=== TEST 8: partial flush
+=== TEST 9: partial flush
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
