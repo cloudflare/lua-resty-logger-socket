@@ -1,12 +1,12 @@
 Name
 ====
 
-lua-resty-logger-socket - nonblocking remote logging for the ngx_lua
+lua-resty-logger-socket - nonblocking remote access logging for Nginx
 
 Status
 ======
 
-This library is under heavy development.
+This library is still experimental and under early development.
 
 Description
 ===========
@@ -15,10 +15,10 @@ This lua library is a remote logging module for ngx_lua:
 
 http://wiki.nginx.org/HttpLuaModule
 
+This is aimed to replace Nginx's standard [ngx_http_log_module](http://nginx.org/en/docs/http/ngx_http_log_module.html) to push access logs to a remote server via an nonblocking socket. A common remote log server supporting sockets is [syslog-ng](http://www.balabit.com/network-security/syslog-ng).
+
 This Lua library takes advantage of ngx_lua's cosocket API, which ensures
 100% nonblocking behavior.
-
-Note that at least [ngx_lua 0.8.0](https://github.com/chaoslawful/lua-nginx-module/tags).
 
 Synopsis
 ========
@@ -27,21 +27,31 @@ Synopsis
     lua_package_path "/path/to/lua-resty-logger-socket/lib/?.lua;;";
 
     server {
-        location /test {
+        location / {
             log_by_lua '
-                log_by_lua '
-                    local logger = require "resty.logger.socket"
-                    if not logger.initted() then
-                        local ok, err = logger.init{
-                            host = 'xxx',
-                            port = 1234,
-                            flush_limit = 1234,
-                            drop_limit = 5678,
-                        }
+                local logger = require "resty.logger.socket"
+                if not logger.initted() then
+                    local ok, err = logger.init{
+                        host = 'xxx',
+                        port = 1234,
+                        flush_limit = 1234,
+                        drop_limit = 5678,
+                    }
+                    if not ok then
+                        ngx.log(ngx.ERR, "failed to initialize the logger: ",
+                                err)
+                        return
                     end
-                    local ok, err = logger.log(msg)
-                    ...
-                ';
+                end
+
+                -- construct the custom access log message in
+                -- the Lua variable "msg"
+
+                local ok, err = logger.log(msg)
+                if not ok then
+                    ngx.log(ngx.ERR, "failed to log the message: ", err)
+                    return
+                end
             ';
         }
     }
@@ -49,54 +59,75 @@ Synopsis
 Methods
 =======
 
-Logger module is designed to be shared inside an nginx worker process by different threads. So currently, only one remote logging server is suppered. All thread should use the same remote logging server.
+This logger module is designed to be shared inside an nginx worker process by all the requests. So currently only one remote log server is supported. We may support multiple log server sharding in the future.
 
 init
 ----
 `syntax: ok, err = logger.init(user_config)`
 
-Initialize logger with user config. Logger must be inited before use. If you does not initialize logger before, you would get an error message.
+Initialize logger with user configurations. Logger must be inited before use. If you do not initialize the logger, you will get an error.
 
 Available user configurations are listed as follows:
 
-`flush_limit`
+* `flush_limit`
 
-If buffered log size plus current log size reaches(>=) this limit, buffered log would be written to logging server. Default flush_limit is 4096(4KB).
+    If the buffered messages' size plus the current message size reaches (`>=`) this limit (in bytes), the buffered log messages will be written to log server. Default to 4096 (4KB).
 
-`drop_limit`
+* `drop_limit`
 
-If buffered log size plush current log size is larger than this limit, current log would be dropped because of limited buffer size. Default drop_limit is
-1048576(1MB).
+    If the buffered messages' size plus the current message size is larger than this limit (in bytes), the current log message will be dropped because of limited buffer size. Default drop_limit is 1048576 (1MB).
 
-`timeout`
+* `timeout`
 
-Sets the timeout (in ms) protection for subsequent operations, including the *connect* method. Default value is 1000(1 sec).
+    Sets the timeout (in ms) protection for subsequent operations, including the *connect* method. Default value is 1000(1 sec).
 
-`host`
+* `host`
 
-logging server host.
+    log server host.
 
-`port`
+* `port`
 
-logging server port.
+    log server port number.
 
-`path`
+* `path`
 
-If logging server uses unix domain socket, path is the socket path. Note that host/port and path can't both be empty. At least one must be supplied.
+    If the log server uses a stream-typed unix domain socket, `path` is the socket file path. Note that host/port and path cannot both be empty. At least one must be supplied.
 
 inited
 --------
 `syntax: inited = logger.inited()`
-Get a value describing whether this module has been inited.
+
+Get a boolean value indicating whether this module has been inited (by calling the [init](#init) method).
 
 log
 ---
 `syntax: ok, err = logger.log(msg)`
 
-Log message to remote logging server.
+Log a message. By default, the log message will be buffered in the logger module until `flush_limit` is reached in which case the logger will flush all the buffered messages to remote log server via a socket.
+
+Installation
+============
+
+You need to compile at least [ngx_lua 0.9.0](https://github.com/chaoslawful/lua-nginx-module/tags) with your Nginx.
+
+You need to configure
+the [lua_package_path](https://github.com/chaoslawful/lua-nginx-module#lua_package_path) directive to
+add the path of your `lua-resty-logger-socket` source tree to ngx_lua's Lua module search path, as in
+
+    # nginx.conf
+    http {
+        lua_package_path "/path/to/lua-resty-logger-socket/lib/?.lua;;";
+        ...
+    }
+
+and then load the library in Lua:
+
+    local logger = require "resty.logger.socket"
 
 TODO
 ====
+
+* Multiple log server sharding and/or failover support.
 
 Author
 ======
