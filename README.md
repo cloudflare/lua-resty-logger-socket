@@ -129,10 +129,12 @@ TODO
 
 * Multiple log server sharding and/or failover support.
 
-Author
-======
+Authors
+=======
+
 Jiale Zhi <vipcalio@gmail.com>, CloudFlare Inc.
 
+Yichun Zhang (agentzh) <agentzh@gmail.com>, CloudFlare Inc.
 
 Copyright and License
 =====================
@@ -140,6 +142,8 @@ Copyright and License
 This module is licensed under the BSD license.
 
 Copyright (C) 2013, by Jiale Zhi <vipcalio@gmail.com>, CloudFlare Inc.
+
+Copyright (C) 2013, by Yichun Zhang <agentzh@gmail.com>, CloudFlare Inc.
 
 All rights reserved.
 
