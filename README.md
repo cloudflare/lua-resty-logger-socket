@@ -93,9 +93,9 @@ Available user configurations are listed as follows:
 
     If the log server uses a stream-typed unix domain socket, `path` is the socket file path. Note that host/port and path cannot both be empty. At least one must be supplied.
 
-`max_error`
+* `max_error`
 
-Max number of error message buffered in logger before return to user by next 'log' call.
+    Max number of error message buffered in logger before return to user by next 'log' call.
 
 inited
 --------
