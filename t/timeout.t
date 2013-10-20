@@ -25,7 +25,7 @@ use Cwd qw(cwd);
 
 repeat_each(1);
 
-plan tests => repeat_each() * (blocks() * 4 + 2);
+plan tests => repeat_each() * (blocks() * 4 + 3);
 
 my $pwd = cwd();
 
@@ -142,4 +142,62 @@ GET /t
 --- tcp_query: 12345678910111213141516171819202122232425262728293031323334353637383940414243444546474849501234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950
 --- tcp_query_len: 182
 --- response_body
+foo
+
+
+
+=== TEST 4: return previous log error
+--- http_config eval: $::HttpConfig
+--- config
+    resolver 8.8.8.8;
+    log_subrequest on;
+    location /main {
+        content_by_lua '
+            local res1 = ngx.location.capture("/t?a=1&b=2")
+            if res1.status == 200 then
+                ngx.print(res1.body)
+            end
+            local res2 = ngx.location.capture("/sleep")
+            if res2.status == 200 then
+                ngx.print(res2.body)
+            end
+            local res3 = ngx.location.capture("/t?a=1&b=2")
+            if res3.status == 200 then
+                ngx.print(res3.body)
+            end
+        ';
+    }
+    location /sleep {
+        content_by_lua '
+            ngx.sleep(1)
+            ngx.say("bar")
+        ';
+    }
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.inited() then
+                local ok, err = logger.init{
+                    -- timeout 1ms
+                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 1, max_error = 2 }
+            end
+
+            local ok, err = logger.log(ngx.var.request_uri)
+            if not ok then
+                ngx.log(ngx.ERR, "log error:" .. err)
+            end
+        ';
+    }
+--- request
+GET /main
+--- wait: 0.5
+--- tcp_listen: 29999
+--- tcp_reply:
+--- error_log eval
+["tcp socket connect timed out", "retry connect","timeouttimeout"]
+--- tcp_query:
+--- response_body
+foo
+bar
 foo

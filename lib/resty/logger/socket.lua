@@ -38,6 +38,10 @@ local buffer_size           = 0
 local buffer_data           = new_tab(20000, 0)
 local buffer_index          = 0
 
+local error_buffer          = new_tab(10, 0)
+local error_buffer_index    = 0
+local max_error             = 5
+
 local connecting
 local connected
 local retry_connect         = 0
@@ -49,13 +53,22 @@ local logger_inited
 local sock
 
 
+local function _write_error(msg)
+    if error_buffer_index >= max_error then
+        return
+    end
+    error_buffer_index = error_buffer_index + 1
+    error_buffer[error_buffer_index] = msg
+end
+
 local function _connect()
     local ok, err
 
     if not connected then
         sock, err = tcp()
         if not sock then
-            ngx_log(ERR, err)
+            _write_error(err)
+            --ngx_log(ERR, err)
             return nil, err
         end
 
@@ -77,10 +90,10 @@ local function _connect()
             if debug then
                 ngx_log(DEBUG, "retry connecting to log server")
             end
-            local ok, err = timer_at(retry_interval, _connect)
-            if not ok then
+            local ok1, err1 = timer_at(retry_interval, _connect)
+            if not ok1 then
                 if debug then
-                    ngx_log(WARN, err)
+                    ngx_log(DEBUG, err1)
                 end
             end
         end
@@ -97,7 +110,8 @@ end
 local function _do_flush()
     local ok, err = _connect()
     if not ok then
-        ngx_log(ERR, err)
+        --ngx_log(ERR, err)
+        _write_error(err)
         return nil, err
     end
 
@@ -119,7 +133,8 @@ local function _do_flush()
             end
             ok, err = timer_at(retry_interval, _do_flush)
             if not ok then
-                ngx_log(ERR, err)
+                _write_error(err)
+                --ngx_log(ERR, err)
             end
         end
         -- sock:send always close current connection on error
@@ -139,14 +154,16 @@ local function _flush()
     flushing = true
     local ok, err = _do_flush()
     if not ok then
-        ngx_log(ERR, err)
+        _write_error(err)
+        --ngx_log(ERR, err)
         return nil, err
     end
 
 
     ok, err = sock:setkeepalive(0, 10)
     if not ok then
-        ngx_log(ERR, err)
+        _write_error(err)
+        --ngx_log(ERR, err)
     end
 
     flushing = false
@@ -162,7 +179,8 @@ local function _write_buffer(msg)
     if (buffer_size > flush_limit) then
         local ok, err = timer_at(0, _flush)
         if not ok then
-            ngx_log(ERR, err)
+            _write_error(err)
+            --ngx_log(ERR, err)
             return nil, err
         end
     end
@@ -188,6 +206,8 @@ function _M.init(user_config)
             drop_limit = v
         elseif k == "timeout" then
             timeout = v
+        elseif k == "max_error" then
+            max_error = v
         end
     end
 
@@ -230,6 +250,15 @@ function _M.log(msg)
         return nil, err
     end
 
+    if error_buffer_index ~= 0 then
+        local last_error = concat(error_buffer)
+        for i = 1, error_buffer_index do
+            error_buffer[i] = nil
+        end
+        error_buffer_index = 0
+
+        return nil, last_error
+    end
     return true
 end
 

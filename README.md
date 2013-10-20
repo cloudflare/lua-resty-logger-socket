@@ -84,6 +84,10 @@ logging server port.
 
 If logging server uses unix domain socket, path is the socket path. Note that host/port and path can't both be empty. At least one must be supplied.
 
+`max_error`
+
+Max number of error message buffered in logger before return to user by next 'log' call.
+
 inited
 --------
 `syntax: inited = logger.inited()`
