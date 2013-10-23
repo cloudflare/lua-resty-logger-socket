@@ -87,7 +87,6 @@ local function _do_connect()
 end
 
 local function _connect()
-    ngx.log(DEBUG, "start _connect")
     local ok, err
 
     if connecting then
@@ -150,7 +149,6 @@ local function _do_flush(packet)
 end
 
 local function _flush()
-    ngx_log(DEBUG, "start _flush")
     local ok, err
 
     if flushing then
@@ -267,7 +265,6 @@ function _M.init(user_config)
 end
 
 function _M.log(msg)
-    ngx.log(DEBUG, "start log")
     if not logger_initted then
         return nil, "not initialized"
     end
