@@ -65,7 +65,7 @@ init
 ----
 `syntax: ok, err = logger.init(user_config)`
 
-Initialize logger with user configurations. Logger must be initted before use. If you do not initialize the logger, you will get an error.
+Initialize logger with user configurations. This logger must be initted before use. If you do not initialize the logger, you will get an error.
 
 Available user configurations are listed as follows:
 
@@ -79,7 +79,7 @@ Available user configurations are listed as follows:
 
 * `timeout`
 
-    Sets the timeout (in ms) protection for subsequent operations, including the *connect* method. Default value is 1000(1 sec).
+    Sets the timeout (in ms) protection for subsequent operations, including the *connect* method. Default value is 1000 (1 sec).
 
 * `host`
 
@@ -95,7 +95,7 @@ Available user configurations are listed as follows:
 
 * `max_error`
 
-    Max number of error message buffered in logger before return to user by next 'log' call.
+    Max number of error messages buffered in logger before return to user by next 'log' call.
 
 initted
 --------
