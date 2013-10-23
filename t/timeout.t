@@ -165,14 +165,6 @@ foo
             if res3.status == 200 then
                 ngx.print(res3.body)
             end
-
-            ngx.sleep(1)
-            ngx.say("bar")
-
-            local res3 = ngx.location.capture("/t?a=1&b=2")
-            if res3.status == 200 then
-                ngx.print(res3.body)
-            end
         ';
     }
     location /t {
@@ -183,7 +175,7 @@ foo
             if not logger.initted() then
                 local ok, err = logger.init{
                     -- timeout 1ms
-                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 1, max_error = 2 }
+                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 1, max_error = 2, max_retry_times = 1, retry_interval = 0.1 }
             end
 
             local ok, err = logger.log(ngx.var.request_uri)
@@ -200,15 +192,13 @@ GET /main
 --- error_log
 lua tcp socket connect timed out
 retry to connect to the log server: timeout
-try to send log message to the log server failed after 3 retries
+log error:try to send log message to the log server failed after 1 retries: try to connect to the log server failed after 1 retries: timeout
 --- tcp_query:
 --- response_body
 foo
 bar
 foo
-bar
-foo
---- ONLY
+
 
 
 === TEST 5: flush race condition
