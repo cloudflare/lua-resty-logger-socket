@@ -104,7 +104,7 @@ GET /t?a=1&b=2
 --- tcp_query_len: 15
 --- error_log
 lua tcp socket write timed out
-retry send
+retry to send log message to the log server: timeout
 --- tcp_query:
 --- response_body
 foo
@@ -157,25 +157,28 @@ foo
             if res1.status == 200 then
                 ngx.print(res1.body)
             end
-            local res2 = ngx.location.capture("/sleep")
-            if res2.status == 200 then
-                ngx.print(res2.body)
+
+            ngx.sleep(1)
+            ngx.say("bar")
+
+            local res3 = ngx.location.capture("/t?a=1&b=2")
+            if res3.status == 200 then
+                ngx.print(res3.body)
             end
+
+            ngx.sleep(1)
+            ngx.say("bar")
+
             local res3 = ngx.location.capture("/t?a=1&b=2")
             if res3.status == 200 then
                 ngx.print(res3.body)
             end
         ';
     }
-    location /sleep {
-        content_by_lua '
-            ngx.sleep(1)
-            ngx.say("bar")
-        ';
-    }
     location /t {
         content_by_lua 'ngx.say("foo")';
         log_by_lua '
+            require("luacov")
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
@@ -191,13 +194,17 @@ foo
     }
 --- request
 GET /main
---- wait: 0.5
+--- wait: 2
 --- tcp_listen: 29999
 --- tcp_reply:
---- error_log eval
-["tcp socket connect timed out", "try to connect to the log server","try to connect to the log server failed after 5 retries: timeouttry to connect to the log server failed after 5 retries"]
+--- error_log
+lua tcp socket connect timed out
+retry to connect to the log server: timeout
+try to send log message to the log server failed after 3 retries
 --- tcp_query:
 --- response_body
+foo
+bar
 foo
 bar
 foo

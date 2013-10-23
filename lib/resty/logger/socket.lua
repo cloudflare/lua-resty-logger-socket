@@ -1,5 +1,5 @@
 -- Copyright (C) 2013 Jiale Zhi (calio), Cloudflare Inc.
-require "luacov"
+--require "luacov"
 
 local concat                = table.concat
 local tcp                   = ngx.socket.tcp
@@ -48,7 +48,7 @@ local connecting
 local connected
 local retry_connect         = 0
 local retry_send            = 0
-local max_retry_times       = 5
+local max_retry_times       = 3
 local retry_interval        = 0.1          -- 0.1s
 local flushing
 local logger_initted
@@ -70,7 +70,6 @@ local function _do_connect()
         sock, err = tcp()
         if not sock then
             _write_error(err)
-            --ngx_log(ERR, err)
             return nil, err
         end
 
@@ -91,17 +90,15 @@ local function _connect()
     local ok, err
 
     if connecting then
-        return
+        return nil, "connecting"
     end
 
     connected = false
     connecting = true
 
-    while retry_connect < max_retry_times do
-        if debug then
-            ngx_log(DEBUG, "try to connect to the log server")
-        end
+    retry_connect = 0
 
+    while retry_connect < max_retry_times do
         ok, err = _do_connect()
 
         if ok then
@@ -110,7 +107,7 @@ local function _connect()
         end
 
         if debug then
-            ngx_log(DEBUG, err)
+            ngx_log(DEBUG, "retry to connect to the log server: ", err)
         end
 
         ngx_sleep(retry_interval)
@@ -127,36 +124,17 @@ local function _connect()
     return true
 end
 
-local function _do_flush()
+local function _do_flush(packet)
     local ok, err = _connect()
     if not ok then
         --ngx_log(ERR, err)
-        _write_error(err)
         return nil, err
     end
 
     -- TODO If send failed, these logs would be lost
-    local packet = concat(buffer_data)
-
-    for i = 1, buffer_index do
-        buffer_data[i] = nil
-    end
-    buffer_size = 0
-    buffer_index = 0
 
     local bytes, err = sock:send(packet)
     if not bytes then
-        retry_send = retry_send + 1
-        if retry_send <= max_retry_times then
-            if debug then
-                ngx_log(DEBUG, "retry send log")
-            end
-            ok, err = timer_at(retry_interval, _do_flush)
-            if not ok then
-                _write_error(err)
-                --ngx_log(ERR, err)
-            end
-        end
         -- sock:send always close current connection on error
         return nil, err
     end
@@ -165,27 +143,50 @@ local function _do_flush()
 end
 
 local function _flush()
+    local ok, err
+
     if flushing then
         -- do this later
         return true
     end
 
     flushing = true
-    local ok, err = _do_flush()
-    if not ok then
-        _write_error(err)
-        --ngx_log(ERR, err)
-        return nil, err
+    retry_send = 0
+
+    local packet = concat(buffer_data, "", 1, buffer_index)
+
+    -- maybe writing nil value is not needed
+    for i = 1, buffer_index do
+        buffer_data[i] = nil
     end
+    buffer_size = 0
+    buffer_index = 0
 
+    while retry_send < max_retry_times do
+        ok, err = _do_flush(packet)
 
-    ok, err = sock:setkeepalive(0, 10)
-    if not ok then
-        _write_error(err)
-        --ngx_log(ERR, err)
+        if ok then
+            break
+        end
+
+        if debug then
+            ngx_log(DEBUG, "retry to send log message to the log server: ", err)
+        end
+
+        ngx_sleep(retry_interval)
+
+        retry_send = retry_send + 1
     end
 
     flushing = false
+
+    if not ok then
+        local err_msg = "try to send log message to the log server failed after "
+                        .. max_retry_times .. " retries: " .. err
+        _write_error(err_msg)
+        return nil, err_msg
+    end
+
     return true
 end
 
@@ -198,7 +199,6 @@ local function _write_buffer(msg)
     if (buffer_size > flush_limit) then
         local ok, err = timer_at(0, _flush)
         if not ok then
-            _write_error(err)
             --ngx_log(ERR, err)
             return nil, err
         end

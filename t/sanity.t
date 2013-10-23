@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 - 1 + 2);
+plan tests => repeat_each() * (blocks() * 4 - 3 + 2);
 
 my $pwd = cwd();
 
