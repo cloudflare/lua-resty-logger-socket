@@ -1,5 +1,5 @@
 -- Copyright (C) 2013 Jiale Zhi (calio), Cloudflare Inc.
---require "luacov"
+require "luacov"
 
 local concat                = table.concat
 local tcp                   = ngx.socket.tcp
@@ -89,6 +89,10 @@ end
 
 local function _connect()
     local ok, err
+
+    if connecting then
+        return
+    end
 
     connected = false
     connecting = true
