@@ -139,6 +139,11 @@ local function _do_flush(packet)
         return nil, err
     end
 
+    ok, err = sock:setkeepalive(0, 10)
+    if not ok then
+        return nil, err
+    end
+
     return true
 end
 
