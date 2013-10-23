@@ -102,7 +102,7 @@ local function _connect()
 
     retry_connect = 0
 
-    while retry_connect < max_retry_times do
+    while retry_connect <= max_retry_times do
         ok, err = _do_connect()
 
         if ok then
@@ -173,7 +173,7 @@ local function _flush()
     buffer_size = 0
     buffer_index = 0
 
-    while retry_send < max_retry_times do
+    while retry_send <= max_retry_times do
         ok, err = _do_flush(packet)
 
         if ok then
@@ -238,6 +238,10 @@ function _M.init(user_config)
             timeout = v
         elseif k == "max_error" then
             max_error = v
+        elseif k == "max_retry_times" then
+            max_retry_times = v
+        elseif k == "retry_interval" then
+            retry_interval = v
         end
     end
 

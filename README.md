@@ -97,6 +97,14 @@ Available user configurations are listed as follows:
 
     Max number of error messages buffered in logger before return to user by next 'log' call.
 
+* `max_retry_times`
+
+    Max number of retry times after a connect to a log server failed or send log messages to a log server failed.
+
+* `retry_interval`
+
+    The time delay (in seconds) before retry to connect to a log server or retry to send log messages to a log server.
+
 initted
 --------
 `syntax: initted = logger.initted()`

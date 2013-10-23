@@ -222,7 +222,13 @@ foo
             if not logger.initted() then
                 local ok, err = logger.init{
                     -- timeout 1ms
-                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 500 }
+                    host = "agentzh.org",
+                    port = 12345,
+                    flush_limit = 1,
+                    timeout = 500,
+                    max_retry_times = 2,
+                    retry_interval = 0.1,
+                }
             end
 
             local ok, err = logger.log(ngx.var.request_uri)
