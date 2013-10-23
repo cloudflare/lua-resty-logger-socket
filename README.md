@@ -65,7 +65,7 @@ init
 ----
 `syntax: ok, err = logger.init(user_config)`
 
-Initialize logger with user configurations. Logger must be inited before use. If you do not initialize the logger, you will get an error.
+Initialize logger with user configurations. Logger must be initted before use. If you do not initialize the logger, you will get an error.
 
 Available user configurations are listed as follows:
 
@@ -97,11 +97,11 @@ Available user configurations are listed as follows:
 
     Max number of error message buffered in logger before return to user by next 'log' call.
 
-inited
+initted
 --------
-`syntax: inited = logger.inited()`
+`syntax: initted = logger.initted()`
 
-Get a boolean value indicating whether this module has been inited (by calling the [init](#init) method).
+Get a boolean value indicating whether this module has been initted (by calling the [init](#init) method).
 
 log
 ---

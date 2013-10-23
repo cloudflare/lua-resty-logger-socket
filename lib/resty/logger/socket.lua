@@ -49,7 +49,7 @@ local retry_send            = 0
 local max_retry_times       = 5
 local retry_interval        = 0.1          -- 0.1s
 local flushing
-local logger_inited
+local logger_initted
 local sock
 
 
@@ -227,13 +227,13 @@ function _M.init(user_config)
     retry_connect = 0
     retry_send = 0
 
-    logger_inited = true
+    logger_initted = true
 
-    return logger_inited
+    return logger_initted
 end
 
 function _M.log(msg)
-    if not logger_inited then
+    if not logger_initted then
         return nil, "not initialized"
     end
 
@@ -262,8 +262,8 @@ function _M.log(msg)
     return true
 end
 
-function _M.inited()
-    return logger_inited
+function _M.initted()
+    return logger_initted
 end
 
 return _M
