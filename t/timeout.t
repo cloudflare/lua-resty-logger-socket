@@ -25,7 +25,7 @@ use Cwd qw(cwd);
 
 repeat_each(1);
 
-plan tests => repeat_each() * (blocks() * 4 + 3);
+plan tests => repeat_each() * (blocks() * 4 + 4);
 
 my $pwd = cwd();
 
@@ -207,4 +207,44 @@ foo
 bar
 foo
 bar
+foo
+
+
+
+=== TEST 5: flush race condition
+--- http_config eval: $::HttpConfig
+--- config
+    resolver 8.8.8.8;
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    -- timeout 1ms
+                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 500 }
+            end
+
+            local ok, err = logger.log(ngx.var.request_uri)
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+
+            local ok, err = logger.log(ngx.var.request_uri)
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 2
+--- tcp_listen: 29999
+--- tcp_reply:
+--- error_log
+tcp socket connect timed out
+try to connect to the log server
+previous flush not finished
+--- tcp_query:
+--- response_body
 foo

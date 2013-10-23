@@ -87,9 +87,13 @@ local function _do_connect()
 end
 
 local function _connect()
+    ngx.log(DEBUG, "start _connect")
     local ok, err
 
     if connecting then
+        if debug then
+            ngx_log(DEBUG, "previous connect not finished")
+        end
         return nil, "connecting"
     end
 
@@ -131,8 +135,6 @@ local function _do_flush(packet)
         return nil, err
     end
 
-    -- TODO If send failed, these logs would be lost
-
     local bytes, err = sock:send(packet)
     if not bytes then
         -- sock:send always close current connection on error
@@ -148,9 +150,13 @@ local function _do_flush(packet)
 end
 
 local function _flush()
+    ngx_log(DEBUG, "start _flush")
     local ok, err
 
     if flushing then
+        if debug then
+            ngx_log(DEBUG, "previous flush not finished")
+        end
         -- do this later
         return true
     end
@@ -257,6 +263,7 @@ function _M.init(user_config)
 end
 
 function _M.log(msg)
+    ngx.log(DEBUG, "start log")
     if not logger_initted then
         return nil, "not initialized"
     end
