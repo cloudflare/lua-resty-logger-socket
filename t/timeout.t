@@ -71,7 +71,7 @@ GET /t?a=1&b=2
 --- tcp_reply:
 --- error_log
 tcp socket connect timed out
-retry connect
+try to connect to the log server
 --- tcp_query:
 --- response_body
 foo
@@ -195,7 +195,7 @@ GET /main
 --- tcp_listen: 29999
 --- tcp_reply:
 --- error_log eval
-["tcp socket connect timed out", "retry connect","timeouttimeout"]
+["tcp socket connect timed out", "try to connect to the log server","try to connect to the log server failed after 5 retries: timeouttry to connect to the log server failed after 5 retries"]
 --- tcp_query:
 --- response_body
 foo

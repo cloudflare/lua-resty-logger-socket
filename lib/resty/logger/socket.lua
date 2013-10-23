@@ -1,9 +1,11 @@
 -- Copyright (C) 2013 Jiale Zhi (calio), Cloudflare Inc.
+--require "luacov"
 
 local concat                = table.concat
 local tcp                   = ngx.socket.tcp
 local timer_at              = ngx.timer.at
 local ngx_log               = ngx.log
+local ngx_sleep             = ngx.sleep
 local type                  = type
 local pairs                 = pairs
 local tostring              = tostring
@@ -61,7 +63,7 @@ local function _write_error(msg)
     error_buffer[error_buffer_index] = msg
 end
 
-local function _connect()
+local function _do_connect()
     local ok, err
 
     if not connected then
@@ -75,8 +77,6 @@ local function _connect()
         sock:settimeout(timeout)
     end
 
-    connecting = true
-
     -- host/port and path config have already been checked in init()
     if host and port then
         ok, err =  sock:connect(host, port)
@@ -84,26 +84,42 @@ local function _connect()
         ok, err =  sock:connect("unix:" .. path)
     end
 
-    if not ok then
-        retry_connect = retry_connect + 1
-        if retry_connect <= max_retry_times then
-            if debug then
-                ngx_log(DEBUG, "retry connecting to log server")
-            end
-            local ok1, err1 = timer_at(retry_interval, _connect)
-            if not ok1 then
-                if debug then
-                    ngx_log(DEBUG, err1)
-                end
-            end
+    return ok, err
+end
+
+local function _connect()
+    local ok, err
+
+    connected = false
+    connecting = true
+
+    while retry_connect < max_retry_times do
+        if debug then
+            ngx_log(DEBUG, "try to connect to the log server")
         end
 
-        return nil, err
+        ok, err = _do_connect()
+
+        if ok then
+            connected = true
+            break
+        end
+
+        if debug then
+            ngx_log(DEBUG, err)
+        end
+
+        ngx_sleep(retry_interval)
+
+        retry_connect = retry_connect + 1
     end
 
-
     connecting = false
-    connected = true
+    if not connected then
+        return nil, "try to connect to the log server failed after " ..
+                    max_retry_times .. " retries: " .. err
+    end
+
     return true
 end
 
@@ -138,7 +154,6 @@ local function _do_flush()
             end
         end
         -- sock:send always close current connection on error
-        connected = false
         return nil, err
     end
 
