@@ -50,6 +50,7 @@ local retry_connect         = 0
 local retry_send            = 0
 local max_retry_times       = 3
 local retry_interval        = 0.1          -- 0.1s
+local pool_size             = 10
 local flushing
 local logger_initted
 local sock
@@ -140,7 +141,7 @@ local function _do_flush(packet)
         return nil, err
     end
 
-    ok, err = sock:setkeepalive(0, 10)
+    ok, err = sock:setkeepalive(0, pool_size)
     if not ok then
         return nil, err
     end
@@ -240,6 +241,8 @@ function _M.init(user_config)
             max_retry_times = v
         elseif k == "retry_interval" then
             retry_interval = v
+        elseif k == "pool_size" then
+            pool_size = v
         end
     end
 

@@ -105,6 +105,9 @@ Available user configurations are listed as follows:
 
     The time delay (in seconds) before retry to connect to a log server or retry to send log messages to a log server.
 
+* `pool_size`
+    Keepalive pool size used by sock:keepalive. Default to 10.
+
 initted
 --------
 `syntax: initted = logger.initted()`
