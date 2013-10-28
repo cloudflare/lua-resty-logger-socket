@@ -3,6 +3,22 @@ Name
 
 lua-resty-logger-socket - nonblocking remote access logging for Nginx
 
+Table of Contents
+=================
+
+* [Name](#name)
+* [Status](#status)
+* [Description](#description)
+* [Synopsis](#synopsis)
+* [Methods](#methods)
+    * [init](#init)
+    * [initted](#initted)
+    * [log](#log)
+* [Installation](#installation)
+* [TODO](#todo)
+* [Authors](#authors)
+* [Copyright and License](#copyright-and-license)
+
 Status
 ======
 
@@ -23,7 +39,7 @@ This Lua library takes advantage of ngx_lua's cosocket API, which ensures
 Synopsis
 ========
 
-
+```lua
     lua_package_path "/path/to/lua-resty-logger-socket/lib/?.lua;;";
 
     server {
@@ -55,11 +71,16 @@ Synopsis
             ';
         }
     }
+```
+
+[Back to TOC](#table-of-contents)
 
 Methods
 =======
 
 This logger module is designed to be shared inside an nginx worker process by all the requests. So currently only one remote log server is supported. We may support multiple log server sharding in the future.
+
+[Back to TOC](#table-of-contents)
 
 init
 ----
@@ -106,7 +127,10 @@ Available user configurations are listed as follows:
     The time delay (in seconds) before retry to connect to a log server or retry to send log messages to a log server.
 
 * `pool_size`
+
     Keepalive pool size used by sock:keepalive. Default to 10.
+
+[Back to TOC](#table-of-contents)
 
 initted
 --------
@@ -114,11 +138,15 @@ initted
 
 Get a boolean value indicating whether this module has been initted (by calling the [init](#init) method).
 
+[Back to TOC](#table-of-contents)
+
 log
 ---
 `syntax: ok, err = logger.log(msg)`
 
 Log a message. By default, the log message will be buffered in the logger module until `flush_limit` is reached in which case the logger will flush all the buffered messages to remote log server via a socket.
+
+[Back to TOC](#table-of-contents)
 
 Installation
 ============
@@ -139,10 +167,14 @@ and then load the library in Lua:
 
     local logger = require "resty.logger.socket"
 
+[Back to TOC](#table-of-contents)
+
 TODO
 ====
 
 * Multiple log server sharding and/or failover support.
+
+[Back to TOC](#table-of-contents)
 
 Authors
 =======
@@ -150,6 +182,8 @@ Authors
 Jiale Zhi <vipcalio@gmail.com>, CloudFlare Inc.
 
 Yichun Zhang (agentzh) <agentzh@gmail.com>, CloudFlare Inc.
+
+[Back to TOC](#table-of-contents)
 
 Copyright and License
 =====================
@@ -169,3 +203,6 @@ Redistribution and use in source and binary forms, with or without modification,
 * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
 
 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+[Back to TOC](#table-of-contents)
+
