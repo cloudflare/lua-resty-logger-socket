@@ -33,7 +33,9 @@ __DATA__
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
-                    host = "127.0.0.1", port = 29999, flush_limit = 1 }
+                    host = "127.0.0.1", port = 29999, flush_limit = 1,
+                    pool_size = 5,
+                }
             end
 
             local ok, err = logger.log(ngx.var.request_uri)
