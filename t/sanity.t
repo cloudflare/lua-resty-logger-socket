@@ -71,7 +71,7 @@ foo
             if not logger.initted() then
                 local ok, err = logger.init{
                     flush_limit = 1,
-                    path = "logger_test.sock",
+                    path = "$TEST_NGINX_HTML_DIR/logger_test.sock",
                     retry_interval = 1,
                     timeout = 100,
                 }
@@ -90,7 +90,7 @@ foo
 --- request
 GET /t?a=1&b=2
 --- wait: 0.1
---- tcp_listen: logger_test.sock
+--- tcp_listen: $TEST_NGINX_HTML_DIR/logger_test.sock
 --- tcp_reply:
 --- no_error_log
 [error]
@@ -460,7 +460,7 @@ foo
                 local ok, err = logger.init{
                     flush_limit = 2,
                     drop_limit = 1,
-                    path = "logger_test.sock",
+                    path = "$TEST_NGINX_HTML_DIR/logger_test.sock",
                     retry_interval = 1,
                     timeout = 100,
                 }
@@ -494,7 +494,7 @@ foo
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
-                    path = "logger_test.sock",
+                    path = "$TEST_NGINX_HTML_DIR/logger_test.sock",
                     drop_limit = 5,
                     flush_limit = 3,
                     retry_interval = 1,
@@ -521,7 +521,7 @@ foo
 --- request
 GET /t?a=1&b=2
 --- wait: 0.1
---- tcp_listen: logger_test.sock
+--- tcp_listen: $TEST_NGINX_HTML_DIR/logger_test.sock
 --- tcp_query: 000bbb
 --- tcp_query_len: 6
 --- tcp_reply:
