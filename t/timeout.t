@@ -10,7 +10,7 @@ BEGIN {
     }
 
     if ($ENV{LD_PRELOAD} !~ /\bmockeagain\.so\b/) {
-        $ENV{LD_PRELOAD} = "./mockeagain.so $ENV{LD_PRELOAD}";
+        $ENV{LD_PRELOAD} = "mockeagain.so $ENV{LD_PRELOAD}";
     }
 
     if ($ENV{MOCKEAGAIN} eq 'r') {
