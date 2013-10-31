@@ -200,7 +200,6 @@ foo
     location /t {
         content_by_lua 'ngx.say("foo")';
         log_by_lua '
-            require("luacov")
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
