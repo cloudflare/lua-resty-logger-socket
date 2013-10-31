@@ -49,7 +49,7 @@ local connected
 local retry_connect         = 0
 local retry_send            = 0
 local max_retry_times       = 3
-local retry_interval        = 0.1          -- 0.1s
+local retry_interval        = 100         -- 0.1s
 local pool_size             = 10
 local flushing
 local logger_initted
@@ -114,7 +114,8 @@ local function _connect()
             ngx_log(DEBUG, "retry to connect to the log server: ", err)
         end
 
-        ngx_sleep(retry_interval)
+        -- ngx.sleep use seconds to count time
+        ngx_sleep(retry_interval / 1000)
 
         retry_connect = retry_connect + 1
     end
@@ -183,7 +184,8 @@ local function _flush()
             ngx_log(DEBUG, "retry to send log message to the log server: ", err)
         end
 
-        ngx_sleep(retry_interval)
+        -- ngx.sleep use seconds to count time
+        ngx_sleep(retry_interval / 1000)
 
         retry_send = retry_send + 1
     end
@@ -240,6 +242,7 @@ function _M.init(user_config)
         elseif k == "max_retry_times" then
             max_retry_times = v
         elseif k == "retry_interval" then
+            -- ngx.sleep uses seconds to count sleep time
             retry_interval = v
         elseif k == "pool_size" then
             pool_size = v

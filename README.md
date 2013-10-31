@@ -124,7 +124,7 @@ Available user configurations are listed as follows:
 
 * `retry_interval`
 
-    The time delay (in seconds) before retry to connect to a log server or retry to send log messages to a log server.
+    The time delay (in ms) before retry to connect to a log server or retry to send log messages to a log server, default to 100 (0.1s).
 
 * `pool_size`
 

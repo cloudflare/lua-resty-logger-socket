@@ -46,7 +46,7 @@ __DATA__
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.1
+--- wait: 0.5
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
@@ -113,7 +113,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.1
+--- wait: 0.5
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
@@ -144,7 +144,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.1
+--- wait: 0.5
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
@@ -171,6 +171,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
+--- wait: 0.5
 --- tcp_listen: 29999
 --- tcp_reply:
 --- error_log
@@ -302,7 +303,7 @@ foo
     ';
 --- request
 GET /t?a=1&b=2
---- wait: 0.1
+--- wait: 0.5
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
@@ -368,7 +369,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.1
+--- wait: 0.5
 --- error_log
 user_config must be a table
 --- response_body
@@ -402,7 +403,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.1
+--- wait: 0.5
 --- error_log
 no logging server configured. Need host/port or path.
 --- response_body
@@ -437,7 +438,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.1
+--- wait: 0.5
 --- error_log
 flush_limit should < drop_limit
 --- response_body
@@ -478,7 +479,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.1
+--- wait: 0.5
 --- tcp_listen: logger_test.sock
 --- tcp_query: 000bbb
 --- tcp_query_len: 6

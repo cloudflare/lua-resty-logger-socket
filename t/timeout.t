@@ -158,7 +158,7 @@ foo
                 ngx.print(res1.body)
             end
 
-            ngx.sleep(1)
+            ngx.sleep(0.1)
             ngx.say("bar")
 
             local res3 = ngx.location.capture("/t?a=1&b=2")
@@ -175,7 +175,7 @@ foo
             if not logger.initted() then
                 local ok, err = logger.init{
                     -- timeout 1ms
-                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 1, max_error = 2, max_retry_times = 1, retry_interval = 0.1 }
+                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 1, max_error = 2, max_retry_times = 1, retry_interval = 1 }
             end
 
             local ok, err = logger.log(ngx.var.request_uri)
@@ -186,7 +186,7 @@ foo
     }
 --- request
 GET /main
---- wait: 2
+--- wait: 4
 --- tcp_listen: 29999
 --- tcp_reply:
 --- error_log
@@ -217,7 +217,7 @@ foo
                     flush_limit = 1,
                     timeout = 500,
                     max_retry_times = 2,
-                    retry_interval = 0.1,
+                    retry_interval = 100,
                 }
             end
 
