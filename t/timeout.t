@@ -60,6 +60,7 @@ __DATA__
             local sock = ngx.socket.tcp()
             sock:settimeout(50)
             sock:connect("agentzh.org", 80)
+            sock:close()
 
             ngx.say("foo")
         ';
@@ -182,6 +183,7 @@ foo
             local sock = ngx.socket.tcp()
             sock:settimeout(500)
             sock:connect("agentzh.org", 80)
+            sock:close()
 
             local res1 = ngx.location.capture("/t?a=1&b=2")
             if res1.status == 200 then
@@ -248,6 +250,7 @@ foo
             local sock = ngx.socket.tcp()
             sock:settimeout(500)
             sock:connect("agentzh.org", 80)
+            sock:close()
 
             ngx.say("foo")
         ';
