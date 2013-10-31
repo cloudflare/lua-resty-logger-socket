@@ -1,4 +1,9 @@
 # vim:set ft= ts=4 sw=4 et:
+
+# In this test, we use agentzh.org:12345 to get a connection timeout. Because
+# agentzh.org:12345 was configured to drop SYN packet so that connection timeout
+# happens
+
 BEGIN {
     if (!defined $ENV{LD_PRELOAD}) {
         $ENV{LD_PRELOAD} = '';
@@ -49,13 +54,24 @@ __DATA__
 --- config
     resolver 8.8.8.8;
     location /t {
-        content_by_lua 'ngx.say("foo")';
+        content_by_lua '
+            -- visit agentzh.org first to get DNS resolve done, then the
+            -- following tests could use cached resolve result
+            local sock = ngx.socket.tcp()
+            sock:settimeout(50)
+            sock:connect("agentzh.org", 80)
+
+            ngx.say("foo")
+        ';
         log_by_lua '
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
                     -- timeout 1ms
-                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 1 }
+                    host = "agentzh.org",
+                    port = 12345,
+                    flush_limit = 1,
+                    timeout = 1 }
             end
 
             local ok, err = logger.log(ngx.var.request_uri)
@@ -66,7 +82,7 @@ __DATA__
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.5
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- error_log
@@ -75,7 +91,6 @@ try to connect to the log server
 --- tcp_query:
 --- response_body
 foo
-
 
 
 === TEST 2: send timeout
@@ -87,7 +102,12 @@ foo
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
-                    host = "127.0.0.1", port = 29999, flush_limit = 1, timeout = 100 }
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 1,
+                    retry_interval = 1,
+                    timeout = 100,
+                }
             end
 
             local ok, err = logger.log("hello, worldaaa")
@@ -98,7 +118,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.5
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- tcp_query_len: 15
@@ -120,7 +140,11 @@ foo
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
-                    host = "127.0.0.1", port = 29999, flush_limit = 1 }
+                    retry_interval = 1,
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 1
+                }
             end
 
             local ok, err = logger.log("1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950")
@@ -132,7 +156,7 @@ foo
     }
 --- request
 GET /t
---- wait: 0.5
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- tcp_query_len: 15
@@ -153,12 +177,18 @@ foo
     log_subrequest on;
     location /main {
         content_by_lua '
+            -- visit agentzh.org first to get DNS resolve done, then the
+            -- following tests could use cached resolve result
+            local sock = ngx.socket.tcp()
+            sock:settimeout(500)
+            sock:connect("agentzh.org", 80)
+
             local res1 = ngx.location.capture("/t?a=1&b=2")
             if res1.status == 200 then
                 ngx.print(res1.body)
             end
 
-            ngx.sleep(2)
+            ngx.sleep(0.05)
             ngx.say("bar")
 
             local res3 = ngx.location.capture("/t?a=1&b=2")
@@ -175,7 +205,14 @@ foo
             if not logger.initted() then
                 local ok, err = logger.init{
                     -- timeout 1ms
-                    host = "agentzh.org", port = 12345, flush_limit = 1, timeout = 1, max_error = 2, max_retry_times = 1, retry_interval = 1 }
+                    host = "agentzh.org",
+                    port = 12345,
+                    flush_limit = 1,
+                    timeout = 1,
+                    max_error = 2,
+                    max_retry_times = 1,
+                    retry_interval = 1,
+                }
             end
 
             local ok, err = logger.log(ngx.var.request_uri)
@@ -186,7 +223,7 @@ foo
     }
 --- request
 GET /main
---- wait: 4
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- error_log
@@ -206,8 +243,17 @@ foo
 --- config
     resolver 8.8.8.8;
     location /t {
-        content_by_lua 'ngx.say("foo")';
+        content_by_lua '
+            -- visit agentzh.org first to get DNS resolve done, then the
+            -- following tests could use cached resolve result
+            local sock = ngx.socket.tcp()
+            sock:settimeout(500)
+            sock:connect("agentzh.org", 80)
+
+            ngx.say("foo")
+        ';
         log_by_lua '
+
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{

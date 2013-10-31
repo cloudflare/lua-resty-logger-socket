@@ -33,8 +33,12 @@ __DATA__
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
-                    host = "127.0.0.1", port = 29999, flush_limit = 1,
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 1,
                     pool_size = 5,
+                    retry_interval = 1,
+                    timeout = 100,
                 }
             end
 
@@ -46,7 +50,7 @@ __DATA__
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.5
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
@@ -67,7 +71,10 @@ foo
             if not logger.initted() then
                 local ok, err = logger.init{
                     flush_limit = 1,
-                    path = "logger_test.sock" }
+                    path = "logger_test.sock",
+                    retry_interval = 1,
+                    timeout = 100,
+                }
                 if not ok then
                     ngx.log(ngx.ERR, err)
                     return
@@ -82,7 +89,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 1
+--- wait: 0.1
 --- tcp_listen: logger_test.sock
 --- tcp_reply:
 --- no_error_log
@@ -102,7 +109,12 @@ foo
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
-                    host = "127.0.0.1", port = 29999, flush_limit = 1 }
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 1,
+                    retry_interval = 1,
+                    timeout = 100,
+                }
             end
 
             local ok, err = logger.log(10)
@@ -113,7 +125,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.5
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
@@ -133,7 +145,12 @@ foo
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
-                    host = "127.0.0.1", port = 29999, flush_limit = 500 }
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 500,
+                    retry_interval = 1,
+                    timeout = 100,
+                }
             end
 
             local ok, err = logger.log(ngx.var.request_uri)
@@ -144,7 +161,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.5
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
@@ -171,7 +188,6 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.5
 --- tcp_listen: 29999
 --- tcp_reply:
 --- error_log
@@ -205,7 +221,12 @@ foo
         local logger = require "resty.logger.socket"
         if not logger.initted() then
             local ok, err = logger.init{
-                host = "127.0.0.1", port = 29999, flush_limit = 6 }
+                host = "127.0.0.1",
+                port = 29999,
+                flush_limit = 6,
+                retry_interval = 1,
+                timeout = 100,
+            }
         end
 
         local ok, err = logger.log(ngx.var.uri)
@@ -215,7 +236,7 @@ foo
     ';
 --- request
 GET /t?a=1&b=2
---- wait: 1
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
@@ -249,7 +270,12 @@ foo
         local logger = require "resty.logger.socket"
         if not logger.initted() then
             local ok, err = logger.init{
-                host = "127.0.0.1", port = 29999, flush_limit = 1 }
+                host = "127.0.0.1",
+                port = 29999,
+                flush_limit = 1,
+                retry_interval = 1,
+                timeout = 100,
+            }
         end
 
         local ok, err = logger.log(ngx.var.uri)
@@ -259,7 +285,7 @@ foo
     ';
 --- request
 GET /t?a=1&b=2
---- wait: 1
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
@@ -293,7 +319,13 @@ foo
         local logger = require "resty.logger.socket"
         if not logger.initted() then
             local ok, err = logger.init{
-                host = "127.0.0.1", port = 29999, flush_limit = 1, log_subrequest = false }
+                host = "127.0.0.1",
+                port = 29999,
+                flush_limit = 1,
+                log_subrequest = false,
+                retry_interval = 1,
+                timeout = 100,
+            }
         end
 
         local ok, err = logger.log(ngx.var.request_uri)
@@ -303,7 +335,7 @@ foo
     ';
 --- request
 GET /t?a=1&b=2
---- wait: 0.5
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
@@ -323,7 +355,12 @@ foo
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
-                    host = "127.0.0.1", port = 29999, flush_limit = 5 }
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 5,
+                    retry_interval = 1,
+                    timeout = 100,
+                }
             end
 
             local ok, err = logger.log("aaa")
@@ -334,7 +371,7 @@ foo
     }
 --- request eval
 ["GET /t","GET /t","GET /t"]
---- wait: 1
+--- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log
@@ -369,7 +406,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.5
+--- wait: 0.1
 --- error_log
 user_config must be a table
 --- response_body
@@ -388,6 +425,8 @@ foo
                 local ok, err = logger.init{
                     flush_limit = 1,
                     drop_limit = 2,
+                    retry_interval = 1,
+                    timeout = 100,
                 }
                 if not ok then
                     ngx.log(ngx.ERR, err)
@@ -403,7 +442,6 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.5
 --- error_log
 no logging server configured. Need host/port or path.
 --- response_body
@@ -423,6 +461,8 @@ foo
                     flush_limit = 2,
                     drop_limit = 1,
                     path = "logger_test.sock",
+                    retry_interval = 1,
+                    timeout = 100,
                 }
                 if not ok then
                     ngx.log(ngx.ERR, err)
@@ -438,7 +478,6 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.5
 --- error_log
 flush_limit should < drop_limit
 --- response_body
@@ -458,6 +497,8 @@ foo
                     path = "logger_test.sock",
                     drop_limit = 5,
                     flush_limit = 3,
+                    retry_interval = 1,
+                    timeout = 1,
                 }
             end
 
@@ -479,7 +520,7 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.5
+--- wait: 0.1
 --- tcp_listen: logger_test.sock
 --- tcp_query: 000bbb
 --- tcp_query_len: 6
