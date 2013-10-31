@@ -94,6 +94,7 @@ try to connect to the log server
 foo
 
 
+
 === TEST 2: send timeout
 --- http_config eval: $::HttpConfig
 --- config
