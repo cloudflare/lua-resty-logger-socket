@@ -158,7 +158,7 @@ foo
                 ngx.print(res1.body)
             end
 
-            ngx.sleep(1)
+            ngx.sleep(2)
             ngx.say("bar")
 
             local res3 = ngx.location.capture("/t?a=1&b=2")
