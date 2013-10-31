@@ -122,8 +122,8 @@ local function _connect()
 
     connecting = false
     if not connected then
-        return nil, "try to connect to the log server failed after " ..
-                    max_retry_times .. " retries: " .. err
+        return nil, "try to connect to the log server failed after "
+                    .. max_retry_times .. " retries: " .. err
     end
 
     return true
@@ -193,8 +193,8 @@ local function _flush()
     flushing = false
 
     if not ok then
-        local err_msg = "try to send log message to the log server " ..
-                        "failed after " .. max_retry_times .. " retries: "
+        local err_msg = "try to send log message to the log server "
+                        .. "failed after " .. max_retry_times .. " retries: "
                         .. err
         _write_error(err_msg)
         return nil, err_msg
