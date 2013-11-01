@@ -31,6 +31,7 @@ use Cwd qw(cwd);
 repeat_each(2);
 
 plan tests => repeat_each() * (blocks() * 4 + 4);
+our $HtmlDir = html_dir;
 
 my $pwd = cwd();
 
@@ -40,6 +41,7 @@ our $HttpConfig = qq{
 };
 
 $ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
+$ENV{TEST_NGINX_HTML_DIR} = $HtmlDir;
 
 no_long_string();
 

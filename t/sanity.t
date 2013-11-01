@@ -6,6 +6,7 @@ use Cwd qw(cwd);
 repeat_each(2);
 
 plan tests => repeat_each() * (blocks() * 4 - 1 + 2);
+our $HtmlDir = html_dir;
 
 my $pwd = cwd();
 
@@ -15,6 +16,7 @@ our $HttpConfig = qq{
 };
 
 $ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
+$ENV{TEST_NGINX_HTML_DIR} = $HtmlDir;
 
 no_long_string();
 
@@ -90,7 +92,7 @@ foo
 --- request
 GET /t?a=1&b=2
 --- wait: 0.1
---- tcp_listen: $TEST_NGINX_HTML_DIR/logger_test.sock
+--- tcp_listen eval: "$ENV{TEST_NGINX_HTML_DIR}/logger_test.sock"
 --- tcp_reply:
 --- no_error_log
 [error]
@@ -521,7 +523,7 @@ foo
 --- request
 GET /t?a=1&b=2
 --- wait: 0.1
---- tcp_listen: $TEST_NGINX_HTML_DIR/logger_test.sock
+--- tcp_listen eval: "$ENV{TEST_NGINX_HTML_DIR}/logger_test.sock"
 --- tcp_query: 000bbb
 --- tcp_query_len: 6
 --- tcp_reply:
