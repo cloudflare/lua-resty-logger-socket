@@ -276,7 +276,7 @@ foo
                 port = 29999,
                 flush_limit = 1,
                 retry_interval = 1,
-                timeout = 100,
+                timeout = 1000,
             }
         end
 
@@ -361,7 +361,7 @@ foo
                     port = 29999,
                     flush_limit = 5,
                     retry_interval = 1,
-                    timeout = 100,
+                    timeout = 1000,
                 }
             end
 
