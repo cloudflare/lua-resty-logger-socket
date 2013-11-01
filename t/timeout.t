@@ -295,3 +295,4 @@ previous flush not finished
 --- tcp_query:
 --- response_body
 foo
+--- timeout: 10
