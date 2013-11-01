@@ -142,6 +142,10 @@ local function _do_flush(packet)
         return nil, err
     end
 
+    if debug then
+        ngx_log(DEBUG, "log flush :" .. bytes)
+    end
+
     ok, err = sock:setkeepalive(0, pool_size)
     if not ok then
         return nil, err
@@ -209,7 +213,7 @@ local function _write_buffer(msg)
 
     buffer_size = buffer_size + #msg
 
-    if (buffer_size > flush_limit) then
+    if (buffer_size >= flush_limit) then
         local ok, err = timer_at(0, _flush)
         if not ok then
             --ngx_log(ERR, err)
@@ -280,7 +284,11 @@ function _M.log(msg)
         msg = tostring(msg)
     end
 
-    if (buffer_size + #msg > drop_limit) then
+    if (debug) then
+        ngx_log(DEBUG, "log message length: " .. #msg)
+    end
+
+    if (buffer_size >= flush_limit and buffer_size + #msg > drop_limit) then
         return nil, "logger buffer is full, this log would be dropped"
     end
 
