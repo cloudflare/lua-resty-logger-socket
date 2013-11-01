@@ -29,8 +29,9 @@ use Test::Nginx::Socket;
 use Cwd qw(cwd);
 
 repeat_each(2);
+no_shuffle();
 
-plan tests => repeat_each() * (blocks() * 4 + 4);
+plan tests => repeat_each() * (blocks() * 4 + 3);
 our $HtmlDir = html_dir;
 
 my $pwd = cwd();
@@ -86,12 +87,9 @@ __DATA__
 --- request
 GET /t?a=1&b=2
 --- wait: 0.1
---- tcp_listen: 29999
---- tcp_reply:
 --- error_log
 tcp socket connect timed out
 try to connect to the log server
---- tcp_query:
 --- response_body
 foo
 
@@ -125,11 +123,9 @@ GET /t?a=1&b=2
 --- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
---- tcp_query_len: 15
 --- error_log
 lua tcp socket write timed out
 retry to send log message to the log server: timeout
---- tcp_query:
 --- response_body
 foo
 
@@ -163,7 +159,6 @@ GET /t
 --- wait: 0.1
 --- tcp_listen: 29999
 --- tcp_reply:
---- tcp_query_len: 15
 --- no_error_log
 [error]
 [warn]
@@ -227,14 +222,11 @@ foo
     }
 --- request
 GET /main
---- wait: 0.1
---- tcp_listen: 29999
---- tcp_reply:
+--- wait: 0.2
 --- error_log
 lua tcp socket connect timed out
 retry to connect to the log server: timeout
 log error:try to send log message to the log server failed after 1 retries: try to connect to the log server failed after 1 retries: timeout
---- tcp_query:
 --- response_body
 foo
 bar
@@ -263,21 +255,21 @@ foo
             if not logger.initted() then
                 local ok, err = logger.init{
                     -- timeout 1ms
-                    host = "agentzh.org",
-                    port = 12345,
+                    host = "127.0.0.1",
+                    port = 29999,
                     flush_limit = 1,
-                    timeout = 500,
+                    timeout = 50,
                     max_retry_times = 2,
                     retry_interval = 100,
                 }
             end
 
-            local ok, err = logger.log(ngx.var.request_uri)
+            local ok, err = logger.log("hello, worldaaa")
             if not ok then
                 ngx.log(ngx.ERR, err)
             end
 
-            local ok, err = logger.log(ngx.var.request_uri)
+            local ok, err = logger.log("hello, worldbbb")
             if not ok then
                 ngx.log(ngx.ERR, err)
             end
@@ -289,10 +281,9 @@ GET /t?a=1&b=2
 --- tcp_listen: 29999
 --- tcp_reply:
 --- error_log
-tcp socket connect timed out
-try to connect to the log server
 previous flush not finished
---- tcp_query:
+--- no_error_log
+tcp socket connect timed out
 --- response_body
 foo
 --- timeout: 10

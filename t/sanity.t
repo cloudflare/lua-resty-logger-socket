@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 - 1 + 2);
+plan tests => repeat_each() * (blocks() * 5 - 10);
 our $HtmlDir = html_dir;
 
 my $pwd = cwd();
@@ -26,7 +26,7 @@ run_tests();
 
 __DATA__
 
-=== TEST 1: instant flush
+=== TEST 1: small flush_limit, instant flush
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -58,12 +58,13 @@ GET /t?a=1&b=2
 --- no_error_log
 [error]
 --- tcp_query: /t?a=1&b=2
+--- tcp_query_len: 10
 --- response_body
 foo
 
 
 
-=== TEST 2: instant flush, unix domain socket
+=== TEST 2: small flush_limit, instant flush, unix domain socket
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -97,12 +98,13 @@ GET /t?a=1&b=2
 --- no_error_log
 [error]
 --- tcp_query: /t?a=1&b=2
+--- tcp_query_len: 10
 --- response_body
 foo
 
 
 
-=== TEST 3: log number
+=== TEST 3: small flush_limit, instant flush, write a number to remote
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -133,12 +135,13 @@ GET /t?a=1&b=2
 --- no_error_log
 [error]
 --- tcp_query: 10
+--- tcp_query_len: 2
 --- response_body
 foo
 
 
 
-=== TEST 4: buffer log, no flush
+=== TEST 4: buffer log message, no flush
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -168,7 +171,7 @@ GET /t?a=1&b=2
 --- tcp_reply:
 --- no_error_log
 [error]
---- tcp_query:
+lua tcp socket connect
 --- response_body
 foo
 
@@ -190,11 +193,8 @@ foo
     }
 --- request
 GET /t?a=1&b=2
---- tcp_listen: 29999
---- tcp_reply:
 --- error_log
 not initialized
---- tcp_query:
 --- response_body
 foo
 
@@ -216,26 +216,28 @@ foo
 
     location /main {
         content_by_lua '
-        ngx.say("foo")';
+            ngx.say("foo")
+        ';
+
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 6,
+                    retry_interval = 1,
+                    timeout = 100,
+                }
+            end
+
+            local ok, err = logger.log("in subrequest")
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+        ';
     }
 
-    log_by_lua '
-        local logger = require "resty.logger.socket"
-        if not logger.initted() then
-            local ok, err = logger.init{
-                host = "127.0.0.1",
-                port = 29999,
-                flush_limit = 6,
-                retry_interval = 1,
-                timeout = 100,
-            }
-        end
-
-        local ok, err = logger.log(ngx.var.uri)
-        if not ok then
-            ngx.log(ngx.ERR, err)
-        end
-    ';
 --- request
 GET /t?a=1&b=2
 --- wait: 0.1
@@ -243,13 +245,14 @@ GET /t?a=1&b=2
 --- tcp_reply:
 --- no_error_log
 [error]
---- tcp_query: /main/t
+--- tcp_query: in subrequest
+--- tcp_query_len: 13
 --- response_body
 foo
 
 
 
-=== TEST 7: log subrequest, flush twice
+=== TEST 7: log subrequest, small flush_limit, flush twice
 --- http_config eval: $::HttpConfig
 --- config
     log_subrequest on;
@@ -313,28 +316,30 @@ foo
     }
 
     location /main {
-        content_by_lua 'ngx.say("foo")';
+        content_by_lua '
+            ngx.say("foo")
+        ';
+        log_by_lua '
+            ngx.log(ngx.NOTICE, "enter log_by_lua")
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 1,
+                    log_subrequest = false,
+                    retry_interval = 1,
+                    timeout = 100,
+                }
+            end
+
+            local ok, err = logger.log(ngx.var.request_uri)
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+        ';
     }
 
-    log_by_lua '
-        ngx.log(ngx.NOTICE, "enter log_by_lua")
-        local logger = require "resty.logger.socket"
-        if not logger.initted() then
-            local ok, err = logger.init{
-                host = "127.0.0.1",
-                port = 29999,
-                flush_limit = 1,
-                log_subrequest = false,
-                retry_interval = 1,
-                timeout = 100,
-            }
-        end
-
-        local ok, err = logger.log(ngx.var.request_uri)
-        if not ok then
-            ngx.log(ngx.ERR, err)
-        end
-    ';
 --- request
 GET /t?a=1&b=2
 --- wait: 0.1
@@ -342,49 +347,13 @@ GET /t?a=1&b=2
 --- tcp_reply:
 --- no_error_log
 [error]
---- tcp_query: /t?a=1&b=2
+lua tcp socket connect
 --- response_body
 foo
 
 
 
-=== TEST 9: partial flush
---- http_config eval: $::HttpConfig
---- config
-    location /t {
-        content_by_lua 'ngx.say("foo")';
-        log_by_lua '
-            local logger = require "resty.logger.socket"
-            if not logger.initted() then
-                local ok, err = logger.init{
-                    host = "127.0.0.1",
-                    port = 29999,
-                    flush_limit = 5,
-                    retry_interval = 1,
-                    timeout = 1000,
-                }
-            end
-
-            local ok, err = logger.log("aaa")
-            if not ok then
-                ngx.log(ngx.ERR, err)
-            end
-        ';
-    }
---- request eval
-["GET /t","GET /t","GET /t"]
---- wait: 0.1
---- tcp_listen: 29999
---- tcp_reply:
---- no_error_log
-[error]
---- tcp_query: aaaaaa
---- response_body eval
-["foo\n","foo\n","foo\n"]
-
-
-
-=== TEST 10: bad user config
+=== TEST 9: bad user config
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -416,7 +385,7 @@ foo
 
 
 
-=== TEST 11: bad user config: no host/port or path
+=== TEST 10: bad user config: no host/port or path
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -451,7 +420,7 @@ foo
 
 
 
-=== TEST 12: bad user config: flush_limit > drop_limit
+=== TEST 11: bad user config: flush_limit > drop_limit
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -487,7 +456,7 @@ foo
 
 
 
-=== TEST 13: drop log test
+=== TEST 12: drop log test
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -497,7 +466,7 @@ foo
             if not logger.initted() then
                 local ok, err = logger.init{
                     path = "$TEST_NGINX_HTML_DIR/logger_test.sock",
-                    drop_limit = 5,
+                    drop_limit = 6,
                     flush_limit = 3,
                     retry_interval = 1,
                     timeout = 1,
