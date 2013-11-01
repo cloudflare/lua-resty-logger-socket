@@ -222,7 +222,7 @@ foo
     }
 --- request
 GET /main
---- wait: 0.1
+--- wait: 0.2
 --- error_log
 lua tcp socket connect timed out
 retry to connect to the log server: timeout
