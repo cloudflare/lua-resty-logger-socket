@@ -290,7 +290,7 @@ foo
     ';
 --- request
 GET /t?a=1&b=2
---- wait: 0.1
+--- wait: 0.2
 --- tcp_listen: 29999
 --- tcp_reply:
 --- no_error_log

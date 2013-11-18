@@ -168,14 +168,8 @@ local function _flush()
     flushing = true
     retry_send = 0
 
-    local packet = concat(buffer_data, "", 1, buffer_index)
-
-    -- maybe writing nil value is not needed
-    for i = 1, buffer_index do
-        buffer_data[i] = nil
-    end
-    buffer_size = 0
-    buffer_index = 0
+    local saved_buffer_index = buffer_index
+    local packet = concat(buffer_data, "", 1, saved_buffer_index)
 
     while retry_send <= max_retry_times do
         ok, err = _do_flush(packet)
@@ -204,7 +198,28 @@ local function _flush()
         return nil, err_msg
     end
 
+    local num_new_log = buffer_index - saved_buffer_index
+    for i = 1, buffer_index do
+        if i <= num_new_log then
+            buffer_data[i] = buffer_data[saved_buffer_index + i]
+        else
+            buffer_data[i] = nil
+        end
+    end
+    buffer_size = 0
+    buffer_index = 0
+
     return true
+end
+
+local function _flush_buffer()
+    if (buffer_size >= flush_limit) then
+        local ok, err = timer_at(0, _flush)
+        if not ok then
+            _write_error(err)
+            return nil, err
+        end
+    end
 end
 
 local function _write_buffer(msg)
@@ -213,13 +228,6 @@ local function _write_buffer(msg)
 
     buffer_size = buffer_size + #msg
 
-    if (buffer_size >= flush_limit) then
-        local ok, err = timer_at(0, _flush)
-        if not ok then
-            --ngx_log(ERR, err)
-            return nil, err
-        end
-    end
 
     return buffer_size
 end
@@ -288,13 +296,20 @@ function _M.log(msg)
         ngx_log(DEBUG, "log message length: " .. #msg)
     end
 
-    if (buffer_size >= flush_limit and buffer_size + #msg > drop_limit) then
-        return nil, "logger buffer is full, this log would be dropped"
-    end
+    local msg_len = #msg
 
-    local ok, err = _write_buffer(msg)
-    if not ok then
-        return nil, err
+    -- return result of _flush_buffer is not checked, it writes error buffer
+    if (msg_len + buffer_size < flush_limit) then
+        _write_buffer(msg)
+    elseif (msg_len + buffer_size <= drop_limit) then
+        _write_buffer(msg)
+        _flush_buffer()
+    else
+        _flush_buffer()
+        if (debug) then
+            ngx_log(DEBUG, "logger buffer is full, this log would be dropped")
+        end
+        --- this message does not fit in buffer, drop it
     end
 
     if error_buffer_index ~= 0 then
