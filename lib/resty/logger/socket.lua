@@ -90,7 +90,7 @@ local function _connect()
         if debug then
             ngx_log(DEBUG, "previous connect not finished")
         end
-        return nil, "connecting"
+        return true
     end
 
     connected = false
@@ -153,6 +153,7 @@ end
 local function _flush()
     local ok, err
 
+    -- pre check
     if flushing then
         if debug then
             ngx_log(DEBUG, "previous flush not finished")
@@ -161,15 +162,16 @@ local function _flush()
         return true
     end
 
-    flushing = true
-    retry_send = 0
-
     if buffer_index <= 0 then
         if debug then
             ngx_log(DEBUG, "buffer_index <= 0:", buffer_index)
         end
-        return
+        return true
     end
+
+    -- start flushing
+    flushing = true
+    retry_send = 0
 
     local saved_buffer_index = buffer_index
     local packet = concat(buffer_data, "", 1, saved_buffer_index)
@@ -307,7 +309,8 @@ function _M.log(msg)
 
     local msg_len = #msg
 
-    -- return result of _flush_buffer is not checked, it writes error buffer
+    -- return result of _flush_buffer is not checked, because it writes
+    -- error buffer
     if (msg_len + buffer_size < flush_limit) then
         _write_buffer(msg)
     elseif (msg_len + buffer_size <= drop_limit) then
