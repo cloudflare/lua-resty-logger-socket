@@ -128,7 +128,6 @@ end
 local function _do_flush(packet)
     local ok, err = _connect()
     if not ok then
-        --ngx_log(ERR, err)
         return nil, err
     end
 
@@ -139,7 +138,8 @@ local function _do_flush(packet)
     end
 
     if debug then
-        ngx_log(DEBUG, "log flush :" .. bytes)
+        ngx.update_time()
+        ngx_log(DEBUG, ngx.now(), ":log flush:" .. bytes .. ":" .. packet)
     end
 
     ok, err = sock:setkeepalive(0, pool_size)
@@ -163,6 +163,13 @@ local function _flush()
 
     flushing = true
     retry_send = 0
+
+    if buffer_index <= 0 then
+        if debug then
+            ngx_log(DEBUG, "buffer_index <= 0:", buffer_index)
+        end
+        return
+    end
 
     local saved_buffer_index = buffer_index
     local packet = concat(buffer_data, "", 1, saved_buffer_index)
@@ -195,15 +202,22 @@ local function _flush()
     end
 
     local num_new_log = buffer_index - saved_buffer_index
+    local new_buffer_index = 0
+    local new_buffer_size = 0
+
+    -- move newly insert log message to the front of the table
     for i = 1, buffer_index do
         if i <= num_new_log then
             buffer_data[i] = buffer_data[saved_buffer_index + i]
+            new_buffer_index = new_buffer_index + 1
+            new_buffer_size = new_buffer_size + #buffer_data[i]
         else
             buffer_data[i] = nil
         end
     end
-    buffer_size = 0
-    buffer_index = 0
+
+    buffer_index = new_buffer_index
+    buffer_size = new_buffer_size
 
     return true
 end
@@ -287,7 +301,8 @@ function _M.log(msg)
     end
 
     if (debug) then
-        ngx_log(DEBUG, "log message length: " .. #msg)
+        ngx.update_time()
+        ngx_log(DEBUG, ngx.now(), ":log message length: " .. #msg)
     end
 
     local msg_len = #msg
