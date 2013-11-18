@@ -40,9 +40,9 @@ local buffer_size           = 0
 local buffer_data           = new_tab(20000, 0)
 local buffer_index          = 0
 
+local last_error
 local error_buffer          = new_tab(10, 0)
 local error_buffer_index    = 0
-local max_error             = 5
 
 local connecting
 local connected
@@ -57,11 +57,7 @@ local sock
 
 
 local function _write_error(msg)
-    if error_buffer_index >= max_error then
-        return
-    end
-    error_buffer_index = error_buffer_index + 1
-    error_buffer[error_buffer_index] = msg
+    last_error = msg
 end
 
 local function _do_connect()
@@ -250,8 +246,6 @@ function _M.init(user_config)
             drop_limit = v
         elseif k == "timeout" then
             timeout = v
-        elseif k == "max_error" then
-            max_error = v
         elseif k == "max_retry_times" then
             max_retry_times = v
         elseif k == "retry_interval" then
@@ -312,15 +306,10 @@ function _M.log(msg)
         --- this message does not fit in buffer, drop it
     end
 
-    if error_buffer_index ~= 0 then
-        local last_error = concat(error_buffer)
-        for i = 1, error_buffer_index do
-            error_buffer[i] = nil
-        end
-        error_buffer_index = 0
-
+    if last_error then
         return nil, last_error
     end
+
     return true
 end
 
