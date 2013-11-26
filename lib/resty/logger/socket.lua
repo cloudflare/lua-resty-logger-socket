@@ -25,7 +25,7 @@ end
 local _M = new_tab(0, 4)
 
 
-_M._VERSION = '0.01'
+_M._VERSION = '0.02'
 
 -- user config
 local flush_limit           = 4096         -- 4KB
