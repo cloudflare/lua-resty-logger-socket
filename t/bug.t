@@ -22,7 +22,7 @@ use Cwd qw(cwd);
 
 repeat_each(1);
 
-plan tests => repeat_each() * (blocks() * 3 + 2);
+plan tests => repeat_each() * (blocks() * 3);
 our $HtmlDir = html_dir;
 
 my $pwd = cwd();
@@ -88,12 +88,13 @@ GET /t?a=1&b=2
 --- tcp_listen: 29999
 --- tcp_reply:
 --- tcp_no_close
---- ordered_error_log
-retry to send log message to the log server: timeout
-retry to send log message to the log server: timeout
+--- grep_error_log chop
 retry to send log message to the log server: timeout
 --- response_body
 foo
 foo
 foo
-
+--- grep_error_log_out
+retry to send log message to the log server: timeout
+retry to send log message to the log server: timeout
+retry to send log message to the log server: timeout
