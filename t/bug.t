@@ -20,7 +20,7 @@ BEGIN {
 use Test::Nginx::Socket;
 use Cwd qw(cwd);
 
-repeat_each(1);
+repeat_each(2);
 
 plan tests => repeat_each() * (blocks() * 3);
 our $HtmlDir = html_dir;
@@ -84,7 +84,7 @@ __DATA__
     }
 --- request
 GET /t?a=1&b=2
---- wait: 0.1
+--- wait: 0.2
 --- tcp_listen: 29999
 --- tcp_reply:
 --- tcp_no_close
