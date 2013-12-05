@@ -22,6 +22,11 @@ if not ok then
     new_tab = function (narr, nrec) return {} end
 end
 
+local ok, clear_tab = pcall(require, "table.clear")
+if not ok then
+    clear_tab = function(tab) for k, _ in pairs(tab) do tab[k] = nil end end
+end
+
 local _M = new_tab(0, 4)
 
 
@@ -37,12 +42,13 @@ local path
 
 -- internal variables
 local buffer_size           = 0
-local buffer_data           = new_tab(20000, 0)
-local buffer_index          = 0
+-- 2nd level buffer, it stores logs ready to be sent out
+local send_buffer           = ""
+-- 1st level buffer, it stores incoming logs
+local log_buffer_data       = new_tab(20000, 0)
+local log_buffer_index      = 0
 
 local last_error
-local error_buffer          = new_tab(10, 0)
-local error_buffer_index    = 0
 
 local connecting
 local connected
@@ -150,6 +156,14 @@ local function _do_flush(packet)
     return true
 end
 
+local function _need_flush()
+    if log_buffer_index > 0 or #send_buffer > 0 then
+        return true
+    end
+
+    return false
+end
+
 local function _flush()
     local ok, err
 
@@ -162,9 +176,9 @@ local function _flush()
         return true
     end
 
-    if buffer_index <= 0 then
+    if not _need_flush() then
         if debug then
-            ngx_log(DEBUG, "buffer_index <= 0:", buffer_index)
+            ngx_log(DEBUG, "do not need to flush:", log_buffer_index)
         end
         return true
     end
@@ -173,11 +187,16 @@ local function _flush()
     flushing = true
     retry_send = 0
 
-    local saved_buffer_index = buffer_index
-    local packet = concat(buffer_data, "", 1, saved_buffer_index)
+    if log_buffer_index > 0 then
+        local packet = concat(log_buffer_data)
+        send_buffer = send_buffer .. packet
+
+        clear_tab(log_buffer_data)
+        log_buffer_index = 0
+    end
 
     while retry_send <= max_retry_times do
-        ok, err = _do_flush(packet)
+        ok, err = _do_flush(send_buffer)
 
         if ok then
             break
@@ -203,23 +222,8 @@ local function _flush()
         return nil, err_msg
     end
 
-    local num_new_log = buffer_index - saved_buffer_index
-    local new_buffer_index = 0
-    local new_buffer_size = 0
-
-    -- move newly insert log message to the front of the table
-    for i = 1, buffer_index do
-        if i <= num_new_log then
-            buffer_data[i] = buffer_data[saved_buffer_index + i]
-            new_buffer_index = new_buffer_index + 1
-            new_buffer_size = new_buffer_size + #buffer_data[i]
-        else
-            buffer_data[i] = nil
-        end
-    end
-
-    buffer_index = new_buffer_index
-    buffer_size = new_buffer_size
+    send_buffer = ""
+    buffer_size = 0
 
     return true
 end
@@ -235,8 +239,8 @@ local function _flush_buffer()
 end
 
 local function _write_buffer(msg)
-    buffer_index = buffer_index + 1
-    buffer_data[buffer_index] = msg
+    log_buffer_index = log_buffer_index + 1
+    log_buffer_data[log_buffer_index] = msg
 
     buffer_size = buffer_size + #msg
 
