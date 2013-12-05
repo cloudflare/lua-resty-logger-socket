@@ -15,6 +15,7 @@ local DEBUG                 = ngx.DEBUG
 local NOTICE                = ngx.NOTICE
 local WARN                  = ngx.WARN
 local ERR                   = ngx.ERR
+local CRIT                  = ngx.CRIT
 
 
 local ok, new_tab = pcall(require, "table.new")
@@ -28,6 +29,21 @@ if not ok then
 end
 
 local _M = new_tab(0, 4)
+
+local is_exiting
+
+if not ngx.config or not ngx.config.ngx_lua_version
+    or ngx.config.ngx_lua_version < 9003 then
+
+    is_exiting = function() return false end
+
+    ngx_log(CRIT, "lua-resty-logger-socket working with ngx_lua module < 0.9.3"
+            .. " has a serious issue that some log messages may be lost when"
+            .. " nginx reloads. We strongly recommend you update your ngx_lua"
+            .. " module to at least 0.9.3")
+else
+    is_exiting = ngx.worker.exiting
+end
 
 
 _M._VERSION = '0.02'
@@ -315,7 +331,12 @@ function _M.log(msg)
 
     -- return result of _flush_buffer is not checked, because it writes
     -- error buffer
-    if (msg_len + buffer_size < flush_limit) then
+    if (is_exiting()) then
+        _flush_buffer()
+        if (debug) then
+            ngx_log(DEBUG, "worker exixting, this log would be dropped")
+        end
+    elseif (msg_len + buffer_size < flush_limit) then
         _write_buffer(msg)
     elseif (msg_len + buffer_size <= drop_limit) then
         _write_buffer(msg)
