@@ -181,11 +181,23 @@ local function _need_flush()
     return false
 end
 
+local function _flush_lock()
+    if not flushing then
+        flushing = true
+        return true
+    end
+    return false
+end
+
+local function _flush_unlock()
+    flushing = false
+end
+
 local function _flush()
     local ok, err
 
     -- pre check
-    if flushing then
+    if not _flush_lock() then
         if debug then
             ngx_log(DEBUG, "previous flush not finished")
         end
@@ -201,7 +213,6 @@ local function _flush()
     end
 
     -- start flushing
-    flushing = true
     retry_send = 0
     if debug then
         ngx_log(DEBUG, "start flushing")
@@ -232,7 +243,7 @@ local function _flush()
         retry_send = retry_send + 1
     end
 
-    flushing = false
+    _flush_unlock()
 
     if not ok then
         local err_msg = "try to send log message to the log server "

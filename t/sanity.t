@@ -467,7 +467,7 @@ foo
                 local ok, err = logger.init{
                     path = "$TEST_NGINX_HTML_DIR/logger_test.sock",
                     drop_limit = 6,
-                    flush_limit = 3,
+                    flush_limit = 4,
                     retry_interval = 1,
                     timeout = 1,
                 }
