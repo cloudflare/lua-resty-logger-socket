@@ -147,7 +147,8 @@ local function _connect()
     return true
 end
 
-local function _do_flush(packet)
+local function _do_flush()
+    local packet = send_buffer
     local ok, err = _connect()
     if not ok then
         return nil, err
@@ -215,7 +216,7 @@ local function _flush()
     end
 
     while retry_send <= max_retry_times do
-        ok, err = _do_flush(send_buffer)
+        ok, err = _do_flush()
 
         if ok then
             break

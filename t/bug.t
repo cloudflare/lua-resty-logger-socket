@@ -22,7 +22,7 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 3 + 1);
+plan tests => repeat_each() * (blocks() * 3);
 our $HtmlDir = html_dir;
 
 my $pwd = cwd();
