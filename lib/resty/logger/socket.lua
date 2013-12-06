@@ -202,6 +202,9 @@ local function _flush()
     -- start flushing
     flushing = true
     retry_send = 0
+    if debug then
+        ngx_log(DEBUG, "start flushing")
+    end
 
     if log_buffer_index > 0 then
         local packet = concat(log_buffer_data)
@@ -238,8 +241,8 @@ local function _flush()
         return nil, err_msg
     end
 
+    buffer_size = buffer_size - #send_buffer
     send_buffer = ""
-    buffer_size = 0
 
     return true
 end

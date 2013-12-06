@@ -22,7 +22,7 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 3);
+plan tests => repeat_each() * (blocks() * 3 + 1);
 our $HtmlDir = html_dir;
 
 my $pwd = cwd();
@@ -98,3 +98,58 @@ foo
 retry to send log message to the log server: timeout
 retry to send log message to the log server: timeout
 retry to send log message to the log server: timeout
+
+
+
+=== TEST 2: insert new log message to buffer in the middle of last send (it's difficult to control the time sequence here, so this is skipped now)
+--- http_config eval: $::HttpConfig
+--- config
+    log_subrequest on;
+    location /log {
+        content_by_lua 'ngx.print("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 6,
+                    drop_limit = 1000,
+                    pool_size = 5,
+                    retry_interval = 1,
+                    max_retry_times = 0,
+                    timeout = 10,
+                }
+            end
+
+            local ok, err = logger.log(ngx.var.arg_log)
+        ';
+
+    }
+    location /t {
+        content_by_lua '
+            local res = ngx.location.capture("/log?log=123456")
+            ngx.say(res.body)
+            ngx.sleep(0.002)
+
+            res = ngx.location.capture("/log?log=aaaa")
+            ngx.say(res.body)
+            ngx.sleep(0.001)
+
+            res = ngx.location.capture("/log?log=bb")
+            ngx.say(res.body)
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 0.2
+--- tcp_listen: 29999
+--- tcp_reply:
+--- tcp_no_close
+--- tcp_query: 123456aaaabb
+--- tcp_query_len: 12
+--- response_body
+foo
+foo
+foo
+--- SKIP
