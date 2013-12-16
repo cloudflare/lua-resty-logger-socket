@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 5 - 10);
+plan tests => repeat_each() * (blocks() * 4 + 2);
 our $HtmlDir = html_dir;
 
 my $pwd = cwd();
