@@ -169,6 +169,7 @@ TODO
 ====
 
 * Multiple log server sharding and/or failover support.
+* "match_similar" utf8 support test.
 
 [Back to TOC](#table-of-contents)
 
