@@ -209,6 +209,7 @@ local function _flush()
         if debug then
             ngx_log(DEBUG, "do not need to flush:", log_buffer_index)
         end
+        _flush_unlock()
         return true
     end
 
