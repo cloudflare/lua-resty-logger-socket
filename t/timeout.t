@@ -25,7 +25,7 @@ BEGIN {
     $ENV{TEST_NGINX_POSTPONE_OUTPUT} = 1;
 }
 
-use Test::Nginx::Socket;
+use Test::Nginx::Socket::Lua;
 use Cwd qw(cwd);
 
 repeat_each(2);
