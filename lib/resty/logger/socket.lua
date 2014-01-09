@@ -3,6 +3,7 @@
 
 local concat                = table.concat
 local tcp                   = ngx.socket.tcp
+local udp                   = ngx.socket.udp
 local timer_at              = ngx.timer.at
 local ngx_log               = ngx.log
 local ngx_sleep             = ngx.sleep
@@ -86,7 +87,12 @@ local function _do_connect()
     local ok, err
 
     if not connected then
-        sock, err = tcp()
+        if path then
+            sock, err = udp()
+        else
+            sock, err = tcp()
+        end
+
         if not sock then
             _write_error(err)
             return nil, err
