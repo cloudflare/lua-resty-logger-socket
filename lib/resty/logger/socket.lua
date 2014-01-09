@@ -59,7 +59,8 @@ local path
 -- internal variables
 local buffer_size           = 0
 -- 2nd level buffer, it stores logs ready to be sent out
-local send_buffer           = ""
+local send_buffer           = new_tab(1000)
+local send_buffer_size      = 0
 -- 1st level buffer, it stores incoming logs
 local log_buffer_data       = new_tab(20000, 0)
 local log_buffer_index      = 0
@@ -148,13 +149,12 @@ local function _connect()
 end
 
 local function _do_flush()
-    local packet = send_buffer
     local ok, err = _connect()
     if not ok then
         return nil, err
     end
 
-    local bytes, err = sock:send(packet)
+    local bytes, err = sock:send(send_buffer)
     if not bytes then
         -- sock:send always close current connection on error
         return nil, err
@@ -162,7 +162,7 @@ local function _do_flush()
 
     if debug then
         ngx.update_time()
-        ngx_log(DEBUG, ngx.now(), ":log flush:" .. bytes .. ":" .. packet)
+        ngx_log(DEBUG, ngx.now(), ":log flush:" .. bytes)
     end
 
     ok, err = sock:setkeepalive(0, pool_size)
@@ -220,9 +220,11 @@ local function _flush()
     end
 
     if log_buffer_index > 0 then
-        local packet = concat(log_buffer_data)
-        send_buffer = send_buffer .. packet
+        for i=1, log_buffer_index do
+            send_buffer[i] = log_buffer_data[i]
+        end
 
+        send_buffer_size = buffer_size
         clear_tab(log_buffer_data)
         log_buffer_index = 0
     end
@@ -254,8 +256,9 @@ local function _flush()
         return nil, err_msg
     end
 
-    buffer_size = buffer_size - #send_buffer
-    send_buffer = ""
+    buffer_size = buffer_size - send_buffer_size
+    clear_tab(send_buffer)
+    send_buffer_size = 0
 
     return true
 end
