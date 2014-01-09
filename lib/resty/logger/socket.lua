@@ -71,6 +71,7 @@ local last_error
 
 local connecting
 local connected
+local exiting
 local retry_connect         = 0
 local retry_send            = 0
 local max_retry_times       = 3
@@ -149,7 +150,9 @@ local function _connect()
         end
 
         -- ngx.sleep use seconds to count time
-        ngx_sleep(retry_interval / 1000)
+        if not exiting then
+            ngx_sleep(retry_interval / 1000)
+        end
 
         retry_connect = retry_connect + 1
     end
@@ -271,11 +274,11 @@ local function _flush()
         ngx_log(DEBUG, "start flushing")
     end
 
-    if not datagram and log_buffer_index > 0 then
-        _prepare_stream_buffer()
-    end
-
     while retry_send <= max_retry_times do
+        if not datagram and log_buffer_index > 0 then
+            _prepare_stream_buffer()
+        end
+
         if datagram then
             ok, err = _do_datagram_flush()
         else
@@ -291,7 +294,9 @@ local function _flush()
         end
 
         -- ngx.sleep use seconds to count time
-        ngx_sleep(retry_interval / 1000)
+        if not exiting then
+            ngx_sleep(retry_interval / 1000)
+        end
 
         retry_send = retry_send + 1
     end
@@ -367,6 +372,7 @@ function _M.init(user_config)
     end
 
     flushing = false
+    exiting = false
     connecting = false
 
     connected = false
@@ -397,6 +403,7 @@ function _M.log(msg)
     -- return result of _flush_buffer is not checked, because it writes
     -- error buffer
     if (is_exiting()) then
+        exiting = true
         _flush_buffer()
         if (debug) then
             ngx_log(DEBUG, "worker exixting, this log would be dropped")
