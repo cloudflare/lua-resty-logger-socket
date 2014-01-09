@@ -112,7 +112,11 @@ Available user configurations are listed as follows:
 
 * `path`
 
-    If the log server uses a stream-typed unix domain socket, `path` is the socket file path. Note that host/port and path cannot both be empty. At least one must be supplied.
+    If the log server uses a unix domain socket `path` is the socket file path. Note that host/port and path cannot both be empty. At least one must be supplied.
+
+* `datagram`
+
+    Sets whether the unix domain socket should use datagrams. The default is false which indicates to use streams.
 
 * `max_retry_times`
 
