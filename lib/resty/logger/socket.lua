@@ -9,6 +9,7 @@ local ngx_log               = ngx.log
 local ngx_sleep             = ngx.sleep
 local type                  = type
 local pairs                 = pairs
+local ipairs                = ipairs
 local tostring              = tostring
 local debug                 = ngx.config.debug
 
@@ -60,7 +61,7 @@ local path
 -- internal variables
 local buffer_size           = 0
 -- 2nd level buffer, it stores logs ready to be sent out
-local send_buffer           = ""
+local send_buffer           = nil
 -- 1st level buffer, it stores incoming logs
 local log_buffer_data       = new_tab(20000, 0)
 local log_buffer_index      = 0
@@ -105,7 +106,7 @@ local function _do_connect()
     if host and port then
         ok, err =  sock:connect(host, port)
     elseif path then
-        ok, err =  sock:connect("unix:" .. path)
+        ok, err =  sock:setpeername("unix:" .. path)
     end
 
     return ok, err
@@ -153,7 +154,15 @@ local function _connect()
     return true
 end
 
-local function _do_flush()
+local function _prepare_buffer()
+        local packet = concat(log_buffer_data)
+        send_buffer = send_buffer .. packet
+
+        clear_tab(log_buffer_data)
+        log_buffer_index = 0
+end
+
+local function _do_buffer_flush()
     local packet = send_buffer
     local ok, err = _connect()
     if not ok then
@@ -165,6 +174,9 @@ local function _do_flush()
         -- sock:send always close current connection on error
         return nil, err
     end
+
+    buffer_size = buffer_size - #packet
+    send_buffer = ""
 
     if debug then
         ngx.update_time()
@@ -179,8 +191,33 @@ local function _do_flush()
     return true
 end
 
+local function _do_table_flush()
+    local ok, err = _connect()
+    if not ok then
+        return nil, err
+    end
+
+    for i, packet in ipairs(log_buffer_data) do
+        local bytes, err = sock:send(packet)
+        if not bytes then
+            return nil, err
+        end
+
+        if debug then
+            ngx.update_time()
+            ngx_log(DEBUG, ngx.now(), ":log flush:" .. bytes .. ":" .. packet)
+        end
+    end
+
+    clear_tab(log_buffer_data)
+    log_buffer_index = 0
+    buffer_size = 0
+
+    return true
+end
+
 local function _need_flush()
-    if log_buffer_index > 0 or #send_buffer > 0 then
+    if log_buffer_index > 0 or (send_buffer and #send_buffer > 0) then
         return true
     end
 
@@ -225,16 +262,16 @@ local function _flush()
         ngx_log(DEBUG, "start flushing")
     end
 
-    if log_buffer_index > 0 then
-        local packet = concat(log_buffer_data)
-        send_buffer = send_buffer .. packet
-
-        clear_tab(log_buffer_data)
-        log_buffer_index = 0
+    if send_buffer and log_buffer_index > 0 then
+        _prepare_buffer()
     end
 
     while retry_send <= max_retry_times do
-        ok, err = _do_flush()
+        if send_buffer then
+            ok, err = _do_buffer_flush()
+        else
+            ok, err = _do_table_flush()
+        end
 
         if ok then
             break
@@ -260,9 +297,6 @@ local function _flush()
         return nil, err_msg
     end
 
-    buffer_size = buffer_size - #send_buffer
-    send_buffer = ""
-
     return true
 end
 
@@ -281,7 +315,6 @@ local function _write_buffer(msg)
     log_buffer_data[log_buffer_index] = msg
 
     buffer_size = buffer_size + #msg
-
 
     return buffer_size
 end
@@ -318,9 +351,12 @@ function _M.init(user_config)
         return nil, "no logging server configured. Need host/port or path."
     end
 
-
     if (flush_limit >= drop_limit) then
         return nil, "flush_limit should < drop_limit"
+    end
+
+    if not path then
+        send_buffer = ""
     end
 
     flushing = false
