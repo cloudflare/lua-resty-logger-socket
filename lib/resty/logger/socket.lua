@@ -57,7 +57,7 @@ local timeout               = 1000         -- 1 sec
 local host
 local port
 local path
-local datagram
+local datagram              = false
 
 -- internal variables
 local buffer_size           = 0
