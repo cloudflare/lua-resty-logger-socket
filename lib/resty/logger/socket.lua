@@ -134,9 +134,7 @@ local function _connect()
         end
 
         -- ngx.sleep use seconds to count time
-        if exiting then
-            ngx_sleep(0)
-        else
+        if not exiting then
             ngx_sleep(retry_interval / 1000)
         end
 
@@ -244,9 +242,7 @@ local function _flush()
         end
 
         -- ngx.sleep use seconds to count time
-        if exiting then
-            ngx_sleep(0)
-        else
+        if not exiting then
             ngx_sleep(retry_interval / 1000)
         end
 
