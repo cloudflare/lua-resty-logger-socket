@@ -295,7 +295,7 @@ local function _flush()
 
     while retry_send <= max_retry_times do
         if incoming_buffer_index > 0 then
-            _prepare_buffer()
+            _prepare_send_buffer()
         end
 
         if datagram then
