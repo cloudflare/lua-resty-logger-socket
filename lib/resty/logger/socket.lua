@@ -57,11 +57,12 @@ local timeout               = 1000         -- 1 sec
 local host
 local port
 local path
+local datagram
 
 -- internal variables
 local buffer_size           = 0
 -- 2nd level buffer, it stores logs ready to be sent out
-local send_buffer           = nil
+local send_buffer           = ""
 -- 1st level buffer, it stores incoming logs
 local log_buffer_data       = new_tab(20000, 0)
 local log_buffer_index      = 0
@@ -88,7 +89,7 @@ local function _do_connect()
     local ok, err
 
     if not connected then
-        if path then
+        if datagram then
             sock, err = udp()
         else
             sock, err = tcp()
@@ -106,7 +107,11 @@ local function _do_connect()
     if host and port then
         ok, err =  sock:connect(host, port)
     elseif path then
-        ok, err =  sock:setpeername("unix:" .. path)
+        if datagram then
+            ok, err =  sock:setpeername("unix:" .. path)
+        else
+            ok, err =  sock:connect("unix:" .. path)
+        end
     end
 
     return ok, err
@@ -154,7 +159,7 @@ local function _connect()
     return true
 end
 
-local function _prepare_buffer()
+local function _prepare_stream_buffer()
         local packet = concat(log_buffer_data)
         send_buffer = send_buffer .. packet
 
@@ -162,7 +167,7 @@ local function _prepare_buffer()
         log_buffer_index = 0
 end
 
-local function _do_buffer_flush()
+local function _do_stream_flush()
     local packet = send_buffer
     local ok, err = _connect()
     if not ok then
@@ -191,7 +196,7 @@ local function _do_buffer_flush()
     return true
 end
 
-local function _do_table_flush()
+local function _do_datagram_flush()
     local ok, err = _connect()
     if not ok then
         return nil, err
@@ -217,7 +222,7 @@ local function _do_table_flush()
 end
 
 local function _need_flush()
-    if log_buffer_index > 0 or (send_buffer and #send_buffer > 0) then
+    if log_buffer_index > 0 or #send_buffer > 0 then
         return true
     end
 
@@ -262,15 +267,15 @@ local function _flush()
         ngx_log(DEBUG, "start flushing")
     end
 
-    if send_buffer and log_buffer_index > 0 then
-        _prepare_buffer()
+    if not datagram and log_buffer_index > 0 then
+        _prepare_stream_buffer()
     end
 
     while retry_send <= max_retry_times do
-        if send_buffer then
-            ok, err = _do_buffer_flush()
+        if datagram then
+            ok, err = _do_datagram_flush()
         else
-            ok, err = _do_table_flush()
+            ok, err = _do_stream_flush()
         end
 
         if ok then
@@ -331,6 +336,8 @@ function _M.init(user_config)
             port = v
         elseif k == "path" then
             path = v
+        elseif  k == "datagram" then
+            datagram = v
         elseif k == "flush_limit" then
             flush_limit = v
         elseif k == "drop_limit" then
@@ -353,10 +360,6 @@ function _M.init(user_config)
 
     if (flush_limit >= drop_limit) then
         return nil, "flush_limit should < drop_limit"
-    end
-
-    if not path then
-        send_buffer = ""
     end
 
     flushing = false
