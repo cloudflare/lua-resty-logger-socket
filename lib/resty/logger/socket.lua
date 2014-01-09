@@ -147,6 +147,14 @@ local function _connect()
     return true
 end
 
+local function _prepare_stream_buffer()
+    local packet = concat(log_buffer_data)
+    send_buffer = send_buffer .. packet
+
+    clear_tab(log_buffer_data)
+    log_buffer_index = 0
+end
+
 local function _do_flush()
     local packet = send_buffer
     local ok, err = _connect()
@@ -219,15 +227,11 @@ local function _flush()
         ngx_log(DEBUG, "start flushing")
     end
 
-    if log_buffer_index > 0 then
-        local packet = concat(log_buffer_data)
-        send_buffer = send_buffer .. packet
-
-        clear_tab(log_buffer_data)
-        log_buffer_index = 0
-    end
-
     while retry_send <= max_retry_times do
+        if log_buffer_index > 0 then
+            _prepare_stream_buffer()
+        end
+
         ok, err = _do_flush()
 
         if ok then
