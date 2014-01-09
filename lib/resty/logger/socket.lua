@@ -61,11 +61,13 @@ local datagram              = false
 
 -- internal variables
 local buffer_size           = 0
--- 2nd level buffer, it stores logs ready to be sent out
-local send_buffer           = ""
 -- 1st level buffer, it stores incoming logs
-local log_buffer_data       = new_tab(20000, 0)
-local log_buffer_index      = 0
+local incoming_buffer       = new_tab(20000, 0)
+local incoming_buffer_index = 0
+-- 2nd level buffer, it stores logs ready to be sent out
+local send_buffer           = new_tab(1000)
+local send_buffer_index     = 0
+local send_buffer_size      = 0
 
 local last_error
 
@@ -166,33 +168,50 @@ local function _connect()
     return true
 end
 
-local function _prepare_stream_buffer()
-    local packet = concat(log_buffer_data)
-    send_buffer = send_buffer .. packet
+local function _prepare_send_buffer()
+    for i=1, incoming_buffer_index do
+        send_buffer_index = send_buffer_index + 1
+        send_buffer[send_buffer_index] = incoming_buffer[i]
+    end
 
-    clear_tab(log_buffer_data)
-    log_buffer_index = 0
+    send_buffer_size = buffer_size
+    incoming_buffer_index = 0
+    clear_tab(incoming_buffer)
+end
+
+local function _reset_send_buffer()
+    buffer_size = buffer_size - send_buffer_size
+    send_buffer_index = 0
+    send_buffer_size = 0
+    clear_tab(send_buffer)
+end
+
+-- this is expensive and should only be used to tidy up in case of an error
+local function _pop_send_buffer(count)
+    for i=1, count do
+        local packet = send_buffer.remove(i)
+        send_buffer_index = send_buffer_index - 1
+        send_buffer_size = send_buffer_size - #packet
+    end
 end
 
 local function _do_stream_flush()
-    local packet = send_buffer
     local ok, err = _connect()
     if not ok then
         return nil, err
     end
 
-    local bytes, err = sock:send(packet)
+    local bytes, err = sock:send(send_buffer)
     if not bytes then
         -- sock:send always close current connection on error
         return nil, err
     end
 
-    buffer_size = buffer_size - #packet
-    send_buffer = ""
+    _reset_send_buffer()
 
     if debug then
         ngx.update_time()
-        ngx_log(DEBUG, ngx.now(), ":log flush:" .. bytes .. ":" .. packet)
+        ngx_log(DEBUG, ngx.now(), ":log flush:" .. bytes)
     end
 
     ok, err = sock:setkeepalive(0, pool_size)
@@ -209,27 +228,27 @@ local function _do_datagram_flush()
         return nil, err
     end
 
-    for i, packet in ipairs(log_buffer_data) do
+    for i, packet in ipairs(send_buffer) do
         local bytes, err = sock:send(packet)
         if not bytes then
+            -- ensure we don't resend packets later that we've already sent
+            _pop_send_buffer(i - 1)
             return nil, err
         end
 
         if debug then
             ngx.update_time()
-            ngx_log(DEBUG, ngx.now(), ":log flush:" .. bytes .. ":" .. packet)
+            ngx_log(DEBUG, ngx.now(), ":log flush:" .. bytes)
         end
     end
 
-    clear_tab(log_buffer_data)
-    log_buffer_index = 0
-    buffer_size = 0
+    _reset_send_buffer()
 
     return true
 end
 
 local function _need_flush()
-    if log_buffer_index > 0 or #send_buffer > 0 then
+    if incoming_buffer_index > 0 or send_buffer_index > 0 then
         return true
     end
 
@@ -262,7 +281,7 @@ local function _flush()
 
     if not _need_flush() then
         if debug then
-            ngx_log(DEBUG, "do not need to flush:", log_buffer_index)
+            ngx_log(DEBUG, "do not need to flush")
         end
         _flush_unlock()
         return true
@@ -275,8 +294,8 @@ local function _flush()
     end
 
     while retry_send <= max_retry_times do
-        if not datagram and log_buffer_index > 0 then
-            _prepare_stream_buffer()
+        if incoming_buffer_index > 0 then
+            _prepare_buffer()
         end
 
         if datagram then
@@ -325,8 +344,8 @@ local function _flush_buffer()
 end
 
 local function _write_buffer(msg)
-    log_buffer_index = log_buffer_index + 1
-    log_buffer_data[log_buffer_index] = msg
+    incoming_buffer_index = incoming_buffer_index + 1
+    incoming_buffer[incoming_buffer_index] = msg
 
     buffer_size = buffer_size + #msg
 
