@@ -116,7 +116,7 @@ Available user configurations are listed as follows:
 
 * `datagram`
 
-    Sets whether the unix domain socket should use datagrams. The default is false which indicates to use streams.
+    Sets whether datagrams should be used. For host/port connections this means UDP rather than the default, TCP. For unix domain sockets this uses SOCK_DGRAM rather than the default, SOCK_STREAM. Please note that if you are using datagram then we will send one datagram packet per message.
 
 * `max_retry_times`
 

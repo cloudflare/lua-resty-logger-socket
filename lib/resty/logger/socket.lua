@@ -105,7 +105,11 @@ local function _do_connect()
 
     -- host/port and path config have already been checked in init()
     if host and port then
-        ok, err =  sock:connect(host, port)
+        if datagram then
+            ok, err =  sock:setpeername(host, port)
+        else
+            ok, err =  sock:connect(host, port)
+        end
     elseif path then
         if datagram then
             ok, err =  sock:setpeername("unix:" .. path)
@@ -160,11 +164,11 @@ local function _connect()
 end
 
 local function _prepare_stream_buffer()
-        local packet = concat(log_buffer_data)
-        send_buffer = send_buffer .. packet
+    local packet = concat(log_buffer_data)
+    send_buffer = send_buffer .. packet
 
-        clear_tab(log_buffer_data)
-        log_buffer_index = 0
+    clear_tab(log_buffer_data)
+    log_buffer_index = 0
 end
 
 local function _do_stream_flush()
