@@ -344,6 +344,8 @@ function _M.log(msg)
         return nil, "not initialized"
     end
 
+    local bytes
+
     if type(msg) ~= "string" then
         msg = tostring(msg)
     end
@@ -363,16 +365,20 @@ function _M.log(msg)
         if (debug) then
             ngx_log(DEBUG, "worker exixting, this log would be dropped")
         end
+        bytes = 0
     elseif (msg_len + buffer_size < flush_limit) then
         _write_buffer(msg)
+        bytes = msg_len
     elseif (msg_len + buffer_size <= drop_limit) then
         _write_buffer(msg)
         _flush_buffer()
+        bytes = msg_len
     else
         _flush_buffer()
         if (debug) then
             ngx_log(DEBUG, "logger buffer is full, this log would be dropped")
         end
+        bytes = 0
         --- this message does not fit in buffer, drop it
     end
 
@@ -382,7 +388,7 @@ function _M.log(msg)
         return nil, err
     end
 
-    return true
+    return bytes
 end
 
 function _M.initted()
