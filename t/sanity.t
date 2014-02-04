@@ -44,8 +44,8 @@ __DATA__
                 }
             end
 
-            local ok, err = logger.log(ngx.var.request_uri)
-            if not ok then
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';
@@ -84,8 +84,8 @@ foo
                 end
             end
 
-            local ok, err = logger.log(ngx.var.request_uri)
-            if not ok then
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';
@@ -121,8 +121,8 @@ foo
                 }
             end
 
-            local ok, err = logger.log(10)
-            if not ok then
+            local bytes, err = logger.log(10)
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';
@@ -158,8 +158,8 @@ foo
                 }
             end
 
-            local ok, err = logger.log(ngx.var.request_uri)
-            if not ok then
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';
@@ -185,8 +185,8 @@ foo
         log_by_lua '
             local logger = require "resty.logger.socket"
 
-            local ok, err = logger.log(ngx.var.request_uri)
-            if not ok then
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';
@@ -231,8 +231,8 @@ foo
                 }
             end
 
-            local ok, err = logger.log("in subrequest")
-            if not ok then
+            local bytes, err = logger.log("in subrequest")
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';
@@ -283,8 +283,8 @@ foo
             }
         end
 
-        local ok, err = logger.log(ngx.var.uri)
-        if not ok then
+        local bytes, err = logger.log(ngx.var.uri)
+        if err then
             ngx.log(ngx.ERR, err)
         end
     ';
@@ -333,8 +333,8 @@ foo
                 }
             end
 
-            local ok, err = logger.log(ngx.var.request_uri)
-            if not ok then
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';
@@ -369,8 +369,8 @@ foo
 
             end
 
-            local ok, err = logger.log(ngx.var.request_uri)
-            if not ok then
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';
@@ -405,8 +405,8 @@ foo
                 end
             end
 
-            local ok, err = logger.log(ngx.var.request_uri)
-            if not ok then
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';
@@ -441,8 +441,8 @@ foo
                 end
             end
 
-            local ok, err = logger.log(ngx.var.request_uri)
-            if not ok then
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';
@@ -473,18 +473,18 @@ foo
                 }
             end
 
-            local ok, err = logger.log("000")
-            if not ok then
+            local bytes, err = logger.log("000")
+            if err then
                 ngx.log(ngx.ERR, err)
             end
 
-            local ok, err = logger.log("aaaaa")
-            if not ok then
+            local bytes, err = logger.log("aaaaa")
+            if err then
                 ngx.log(ngx.ERR, err)
             end
 
-            local ok, err = logger.log("bbb")
-            if not ok then
+            local bytes, err = logger.log("bbb")
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';

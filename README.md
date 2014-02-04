@@ -63,9 +63,9 @@ Synopsis
                 -- construct the custom access log message in
                 -- the Lua variable "msg"
 
-                local ok, err = logger.log(msg)
-                if not ok then
-                    ngx.log(ngx.ERR, "failed to log the message: ", err)
+                local bytes, err = logger.log(msg)
+                if err then
+                    ngx.log(ngx.ERR, "failed to log message: ", err)
                     return
                 end
             ';
@@ -138,9 +138,10 @@ Get a boolean value indicating whether this module has been initted (by calling 
 
 log
 ---
-`syntax: ok, err = logger.log(msg)`
+`syntax: bytes, err = logger.log(msg)`
 
 Log a message. By default, the log message will be buffered in the logger module until `flush_limit` is reached in which case the logger will flush all the buffered messages to remote log server via a socket.
+`bytes` is the number of bytes that successfully buffered in the logger. If `bytes` is nil, `err` is a string describing what kind of error happens this time. If bytes is not nil, then `err` is a previous error message. `err` can be nil when `bytes` is not nil.
 
 [Back to TOC](#table-of-contents)
 

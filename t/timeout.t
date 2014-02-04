@@ -78,8 +78,8 @@ __DATA__
                     timeout = 1 }
             end
 
-            local ok, err = logger.log(ngx.var.request_uri)
-            if not ok then
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';
@@ -112,8 +112,8 @@ foo
                 }
             end
 
-            local ok, err = logger.log("hello, worldaaa")
-            if not ok then
+            local bytes, err = logger.log("hello, worldaaa")
+            if err then
                 ngx.log(ngx.ERR, "log failed")
             end
         ';
@@ -147,9 +147,9 @@ foo
                 }
             end
 
-            local ok, err = logger.log("1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950")
-            local ok, err = logger.log("1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950")
-            if not ok then
+            local bytes, err = logger.log("1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950")
+            local bytes, err = logger.log("1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950")
+            if err then
                 ngx.log(ngx.ERR, "log failed")
             end
         ';
@@ -214,8 +214,8 @@ foo
                 }
             end
 
-            local ok, err = logger.log(ngx.var.request_uri)
-            if not ok then
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
                 ngx.log(ngx.ERR, "log error:" .. err)
             end
         ';
@@ -264,13 +264,13 @@ foo
                 }
             end
 
-            local ok, err = logger.log("hello, worldaaa")
-            if not ok then
+            local bytes, err = logger.log("hello, worldaaa")
+            if err then
                 ngx.log(ngx.ERR, err)
             end
 
-            local ok, err = logger.log("hello, worldbbb")
-            if not ok then
+            local bytes, err = logger.log("hello, worldbbb")
+            if err then
                 ngx.log(ngx.ERR, err)
             end
         ';

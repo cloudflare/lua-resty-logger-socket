@@ -385,7 +385,7 @@ function _M.log(msg)
     if last_error then
         local err = last_error
         last_error = nil
-        return nil, err
+        return bytes, err
     end
 
     return bytes
