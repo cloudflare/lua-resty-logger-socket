@@ -270,12 +270,10 @@ local function _flush()
 end
 
 local function _flush_buffer()
-    if (buffer_size >= flush_limit) then
-        local ok, err = timer_at(0, _flush)
-        if not ok then
-            _write_error(err)
-            return nil, err
-        end
+    local ok, err = timer_at(0, _flush)
+    if not ok then
+        _write_error(err)
+        return nil, err
     end
 end
 
