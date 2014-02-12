@@ -46,7 +46,7 @@ else
 end
 
 
-_M._VERSION = '0.02'
+_M._VERSION = '0.03'
 
 -- user config
 local flush_limit           = 4096         -- 4KB
