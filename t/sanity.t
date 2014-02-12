@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 + 2);
+plan tests => repeat_each() * (blocks() * 4 + 4);
 our $HtmlDir = html_dir;
 
 my $pwd = cwd();
@@ -500,3 +500,89 @@ GET /t?a=1&b=2
 logger buffer is full, this log would be dropped
 --- response_body
 foo
+
+
+
+=== TEST 13: logger response
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            ngx.say("foo")
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 1,
+                    pool_size = 5,
+                    retry_interval = 1,
+                    timeout = 100,
+                }
+            end
+
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
+                ngx.log(ngx.ERR, err)
+            end
+            ngx.say("wrote bytes: ", bytes)
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 0.1
+--- tcp_listen: 29999
+--- tcp_reply:
+--- no_error_log
+[error]
+--- tcp_query: /t?a=1&b=2
+--- tcp_query_len: 10
+--- response_body
+foo
+wrote bytes: 10
+
+
+
+=== TEST 14: logger response
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            ngx.say("foo")
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 10,
+                    drop_limit = 11,
+                    pool_size = 5,
+                    retry_interval = 1,
+                    timeout = 100,
+                }
+            end
+
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
+                ngx.log(ngx.ERR, err)
+            end
+            -- byte1 should be 0
+            local bytes1, err1 = logger.log(ngx.var.request_uri)
+            if err1 then
+                ngx.log(ngx.ERR, err1)
+            end
+            ngx.say("wrote bytes: ", bytes + bytes1)
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 0.1
+--- tcp_listen: 29999
+--- tcp_reply:
+--- no_error_log
+[error]
+--- tcp_query: /t?a=1&b=2
+--- tcp_query_len: 10
+--- response_body
+foo
+wrote bytes: 10
