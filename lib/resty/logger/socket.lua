@@ -1,4 +1,4 @@
--- Copyright (C) 2013 Jiale Zhi (calio), Cloudflare Inc.
+-- Copyright (C) 2013-2014 Jiale Zhi (calio), Cloudflare Inc.
 --require "luacov"
 
 local concat                = table.concat
@@ -359,9 +359,10 @@ function _M.log(msg)
     -- error buffer
     if (is_exiting()) then
         exiting = true
+        _write_buffer(msg)
         _flush_buffer()
         if (debug) then
-            ngx_log(DEBUG, "worker exixting, this log would be dropped")
+            ngx_log(DEBUG, "worker exixting")
         end
         bytes = 0
     elseif (msg_len + buffer_size < flush_limit) then
