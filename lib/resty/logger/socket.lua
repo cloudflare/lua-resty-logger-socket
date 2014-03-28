@@ -76,7 +76,6 @@ local retry_interval        = 100         -- 0.1s
 local pool_size             = 10
 local flushing
 local logger_initted
-local sock
 
 
 local function _write_error(msg)
@@ -84,7 +83,7 @@ local function _write_error(msg)
 end
 
 local function _do_connect()
-    local ok, err
+    local ok, err, sock
 
     if not connected then
         sock, err = tcp()
@@ -103,11 +102,15 @@ local function _do_connect()
         ok, err =  sock:connect("unix:" .. path)
     end
 
-    return ok, err
+    if not ok then
+        return nil, err
+    end
+
+    return sock
 end
 
 local function _connect()
-    local ok, err
+    local err, sock
 
     if connecting then
         if debug then
@@ -122,9 +125,9 @@ local function _connect()
     retry_connect = 0
 
     while retry_connect <= max_retry_times do
-        ok, err = _do_connect()
+        sock, err = _do_connect()
 
-        if ok then
+        if sock then
             connected = true
             break
         end
@@ -147,7 +150,7 @@ local function _connect()
                     .. max_retry_times .. " retries: " .. err
     end
 
-    return true
+    return sock
 end
 
 local function _prepare_stream_buffer()
@@ -160,8 +163,8 @@ end
 
 local function _do_flush()
     local packet = send_buffer
-    local ok, err = _connect()
-    if not ok then
+    local sock, err = _connect()
+    if not sock then
         return nil, err
     end
 
@@ -176,7 +179,7 @@ local function _do_flush()
         ngx_log(DEBUG, ngx.now(), ":log flush:" .. bytes .. ":" .. packet)
     end
 
-    ok, err = sock:setkeepalive(0, pool_size)
+    local ok, err = sock:setkeepalive(0, pool_size)
     if not ok then
         return nil, err
     end
