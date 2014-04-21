@@ -22,7 +22,7 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 3);
+plan tests => repeat_each() * (blocks() * 3 + 2);
 our $HtmlDir = html_dir;
 
 my $pwd = cwd();
@@ -153,3 +153,49 @@ foo
 foo
 foo
 --- SKIP
+
+
+
+=== TEST 3: Test deadlock (https://github.com/cloudflare/lua-resty-logger-socket/pull/5)
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            ngx.say("foo")
+
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 0,
+                    drop_limit = 1000,
+                    pool_size = 5,
+                    retry_interval = 1,
+                    timeout = 100,
+                }
+            end
+            local ok, err = logger.log("")
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+
+            ngx.sleep(0.05)
+
+            local ok, err = logger.log(ngx.var.request_uri)
+            if not ok then
+                ngx.log(ngx.ERR, err)
+            end
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 0.1
+--- tcp_listen: 29999
+--- tcp_reply:
+--- no_error_log
+[error]
+--- tcp_query: /t?a=1&b=2
+--- tcp_query_len: 10
+--- response_body
+foo

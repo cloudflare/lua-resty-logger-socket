@@ -188,7 +188,7 @@ local function _do_flush()
 end
 
 local function _need_flush()
-    if log_buffer_index > 0 or #send_buffer > 0 then
+    if buffer_size > 0 then
         return true
     end
 
@@ -197,6 +197,9 @@ end
 
 local function _flush_lock()
     if not flushing then
+        if debug then
+            ngx_log(DEBUG, "flush lock accquired")
+        end
         flushing = true
         return true
     end
@@ -204,6 +207,9 @@ local function _flush_lock()
 end
 
 local function _flush_unlock()
+    if debug then
+        ngx_log(DEBUG, "flush lock released")
+    end
     flushing = false
 end
 
