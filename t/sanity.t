@@ -72,6 +72,8 @@ foo
     location /t {
         content_by_lua 'ngx.say("foo")';
         log_by_lua '
+            collectgarbage()  -- to help leak testing
+
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
@@ -112,6 +114,8 @@ foo
     location /t {
         content_by_lua 'ngx.say("foo")';
         log_by_lua '
+            collectgarbage()  -- to help leak testing
+
             local logger = require "resty.logger.socket"
             if not logger.initted() then
                 local ok, err = logger.init{
@@ -210,6 +214,8 @@ foo
     log_subrequest on;
     location /t {
         content_by_lua '
+            collectgarbage()  -- to help leak testing
+
             local res = ngx.location.capture("/main?c=1&d=2")
             if res.status ~= 200 then
                 ngx.log(ngx.ERR, "capture /main failed")
@@ -262,6 +268,8 @@ foo
     log_subrequest on;
     location /t {
         content_by_lua '
+            collectgarbage()  -- to help leak testing
+
             local res = ngx.location.capture("/main?c=1&d=2")
             if res.status ~= 200 then
                 ngx.log(ngx.ERR, "capture /main failed")
@@ -512,6 +520,8 @@ foo
 --- config
     location /t {
         content_by_lua '
+            collectgarbage()  -- to help leak testing
+
             ngx.say("foo")
             local logger = require "resty.logger.socket"
             if not logger.initted() then
