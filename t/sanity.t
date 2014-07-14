@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 + 4);
+plan tests => repeat_each() * (blocks() * 4 + 5);
 our $HtmlDir = html_dir;
 
 my $pwd = cwd();
@@ -600,3 +600,51 @@ GET /t?a=1&b=2
 --- response_body
 foo
 wrote bytes: 10
+
+
+
+=== TEST 15: max reuse
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            ngx.say("foo")
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 1,
+                    drop_limit = 10000,
+                    pool_size = 5,
+                    retry_interval = 1,
+                    timeout = 50,
+                    max_buffer_reuse = 1,
+                }
+            end
+
+            local bytes, err
+            local total_bytes = 0
+            for i = 1, 5 do
+                bytes, err = logger.log(i .. i .. i)
+                if err then
+                    ngx.log(ngx.ERR, err)
+                end
+                total_bytes = total_bytes + bytes
+                ngx.sleep(0.05)
+            end
+            ngx.say("wrote bytes: ", total_bytes)
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 0.1
+--- tcp_listen: 29999
+--- tcp_reply:
+--- error_log
+log buffer max reuse(1) reached, create new log_buffer_data
+--- tcp_query: 111222333444555
+--- tcp_query_len: 15
+--- response_body
+foo
+wrote bytes: 15

@@ -55,6 +55,8 @@ local timeout               = 1000         -- 1 sec
 local host
 local port
 local path
+local max_buffer_reuse      = 10000        -- reuse buffer for at most 10000
+                                           -- times
 
 -- internal variables
 local buffer_size           = 0
@@ -62,6 +64,7 @@ local buffer_size           = 0
 local send_buffer           = ""
 -- 1st level buffer, it stores incoming logs
 local log_buffer_data       = new_tab(20000, 0)
+-- number of log lines in current buffer, starts from 0
 local log_buffer_index      = 0
 
 local last_error
@@ -76,6 +79,8 @@ local retry_interval        = 100         -- 0.1s
 local pool_size             = 10
 local flushing
 local logger_initted
+local counter               = 0
+
 
 
 local function _write_error(msg)
@@ -154,11 +159,19 @@ local function _connect()
 end
 
 local function _prepare_stream_buffer()
-    local packet = concat(log_buffer_data)
+    local packet = concat(log_buffer_data, "", 1, log_buffer_index)
     send_buffer = send_buffer .. packet
 
-    clear_tab(log_buffer_data)
     log_buffer_index = 0
+    counter = counter + 1
+    if counter > max_buffer_reuse then
+        log_buffer_data = new_tab(20000, 0)
+        counter = 0
+        if debug then
+            ngx_log(DEBUG, "log buffer max reuse(" .. max_buffer_reuse
+                    .. ") reached, create new log_buffer_data")
+        end
+    end
 end
 
 local function _do_flush()
@@ -321,6 +334,8 @@ function _M.init(user_config)
             retry_interval = v
         elseif k == "pool_size" then
             pool_size = v
+        elseif k == "max_buffer_reuse" then
+            max_buffer_reuse = v
         end
     end
 
