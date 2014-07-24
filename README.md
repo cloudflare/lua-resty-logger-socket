@@ -126,6 +126,18 @@ Available user configurations are listed as follows:
 
     Keepalive pool size used by sock:keepalive. Default to 10.
 
+* `ssl`
+
+    Boolean, enable or disable connecting via SSL. Default to false.
+
+* `ssl_verify`
+
+    Boolean, enable or disable verifying host and certificate match. Default to true.
+
+* `sni_host`
+
+    Set the hostname to send in SNI and to use when verifying certificate match.
+
 [Back to TOC](#table-of-contents)
 
 initted
