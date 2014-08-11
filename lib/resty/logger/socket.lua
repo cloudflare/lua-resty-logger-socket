@@ -28,7 +28,7 @@ if not ok then
     clear_tab = function(tab) for k, _ in pairs(tab) do tab[k] = nil end end
 end
 
-local _M = new_tab(0, 4)
+local _M = new_tab(0, 5)
 
 local is_exiting
 
@@ -417,6 +417,8 @@ end
 function _M.initted()
     return logger_initted
 end
+
+_M.flush = _flush
 
 return _M
 
