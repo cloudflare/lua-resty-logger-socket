@@ -122,12 +122,12 @@ local function _do_handshake(sock)
         return sock
     end
 
-    local ok, err = sock:sslhandshake(ssl_session, sni_host or host, ssl_verify)
-    if not ok then
+    local session, err = sock:sslhandshake(ssl_session, sni_host or host, ssl_verify)
+    if not session then
         return nil, err
     end
 
-    ssl_session = ok
+    ssl_session = session
     return sock
 end
 
