@@ -386,7 +386,7 @@ function _M.log(msg)
         _write_buffer(msg)
         _flush_buffer()
         if (debug) then
-            ngx_log(DEBUG, "worker exixting")
+            ngx_log(DEBUG, "worker exiting")
         end
         bytes = 0
     elseif (msg_len + buffer_size < flush_limit) then
