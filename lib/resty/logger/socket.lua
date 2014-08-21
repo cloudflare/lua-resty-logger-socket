@@ -197,7 +197,7 @@ local function _do_flush()
         return nil, err
     end
 
-    return true
+    return bytes
 end
 
 local function _need_flush()
@@ -252,14 +252,15 @@ local function _flush()
         ngx_log(DEBUG, "start flushing")
     end
 
+    local bytes
     while retry_send <= max_retry_times do
         if log_buffer_index > 0 then
             _prepare_stream_buffer()
         end
 
-        ok, err = _do_flush()
+        bytes, err = _do_flush()
 
-        if ok then
+        if bytes then
             break
         end
 
@@ -277,7 +278,7 @@ local function _flush()
 
     _flush_unlock()
 
-    if not ok then
+    if not bytes then
         local err_msg = "try to send log message to the log server "
                         .. "failed after " .. max_retry_times .. " retries: "
                         .. err
@@ -288,7 +289,7 @@ local function _flush()
     buffer_size = buffer_size - #send_buffer
     send_buffer = ""
 
-    return true
+    return bytes
 end
 
 local function _flush_buffer()

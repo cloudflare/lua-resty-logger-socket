@@ -55,8 +55,8 @@ __DATA__
                 ngx.log(ngx.ERR, err)
             end
 
-            logger.flush()
-            ngx.say("ok")
+            local bytes, err = logger.flush()
+            ngx.say(bytes)
         ';
     }
 --- request
@@ -69,5 +69,5 @@ GET /t?a=1&b=2
 --- tcp_query: abcefg
 --- tcp_query_len: 6
 --- response_body
-ok
+6
 
