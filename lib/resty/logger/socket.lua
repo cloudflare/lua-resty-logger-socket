@@ -121,7 +121,7 @@ local function _connect()
         if debug then
             ngx_log(DEBUG, "previous connect not finished")
         end
-        return true
+        return nil, "previous connect not finished"
     end
 
     connected = false
