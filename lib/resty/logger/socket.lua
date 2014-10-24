@@ -28,7 +28,7 @@ if not ok then
     clear_tab = function(tab) for k, _ in pairs(tab) do tab[k] = nil end end
 end
 
-local _M = new_tab(0, 4)
+local _M = new_tab(0, 5)
 
 local is_exiting
 
@@ -138,7 +138,7 @@ local function _connect()
         if debug then
             ngx_log(DEBUG, "previous connect not finished")
         end
-        return true
+        return nil, "previous connect not finished"
     end
 
     connected = false
@@ -217,7 +217,7 @@ local function _do_flush()
         return nil, err
     end
 
-    return true
+    return bytes
 end
 
 local function _need_flush()
@@ -272,14 +272,15 @@ local function _flush()
         ngx_log(DEBUG, "start flushing")
     end
 
+    local bytes
     while retry_send <= max_retry_times do
         if log_buffer_index > 0 then
             _prepare_stream_buffer()
         end
 
-        ok, err = _do_flush()
+        bytes, err = _do_flush()
 
-        if ok then
+        if bytes then
             break
         end
 
@@ -297,7 +298,7 @@ local function _flush()
 
     _flush_unlock()
 
-    if not ok then
+    if not bytes then
         local err_msg = "try to send log message to the log server "
                         .. "failed after " .. max_retry_times .. " retries: "
                         .. err
@@ -308,7 +309,7 @@ local function _flush()
     buffer_size = buffer_size - #send_buffer
     send_buffer = ""
 
-    return true
+    return bytes
 end
 
 local function _flush_buffer()
@@ -412,7 +413,7 @@ function _M.log(msg)
         _write_buffer(msg)
         _flush_buffer()
         if (debug) then
-            ngx_log(DEBUG, "worker exixting")
+            ngx_log(DEBUG, "worker exiting")
         end
         bytes = 0
     elseif (msg_len + buffer_size < flush_limit) then
@@ -443,6 +444,8 @@ end
 function _M.initted()
     return logger_initted
 end
+
+_M.flush = _flush
 
 return _M
 

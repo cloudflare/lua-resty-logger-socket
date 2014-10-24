@@ -14,6 +14,7 @@ Table of Contents
     * [init](#init)
     * [initted](#initted)
     * [log](#log)
+    * [flush](#flush)
 * [Installation](#installation)
 * [TODO](#todo)
 * [Authors](#authors)
@@ -154,6 +155,15 @@ log
 
 Log a message. By default, the log message will be buffered in the logger module until `flush_limit` is reached in which case the logger will flush all the buffered messages to remote log server via a socket.
 `bytes` is the number of bytes that successfully buffered in the logger. If `bytes` is nil, `err` is a string describing what kind of error happens this time. If bytes is not nil, then `err` is a previous error message. `err` can be nil when `bytes` is not nil.
+
+[Back to TOC](#table-of-contents)
+
+flush
+-----
+`syntax: bytes, err = logger.flush()`
+
+Flushes any buffered messages out to remote immediately. Usually you do not need
+to call this manually because flushing happens automatically when the buffer is full.
 
 [Back to TOC](#table-of-contents)
 
