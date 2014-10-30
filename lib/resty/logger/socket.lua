@@ -23,11 +23,6 @@ if not ok then
     new_tab = function (narr, nrec) return {} end
 end
 
-local ok, clear_tab = pcall(require, "table.clear")
-if not ok then
-    clear_tab = function(tab) for k, _ in pairs(tab) do tab[k] = nil end end
-end
-
 local _M = new_tab(0, 5)
 
 local is_exiting
