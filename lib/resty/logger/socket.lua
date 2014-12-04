@@ -52,6 +52,8 @@ local port
 local path
 local max_buffer_reuse      = 10000        -- reuse buffer for at most 10000
                                            -- times
+local periodic_flush        = nil
+local need_periodic_flush   = nil
 
 -- internal variables
 local buffer_size           = 0
@@ -75,7 +77,6 @@ local pool_size             = 10
 local flushing
 local logger_initted
 local counter               = 0
-
 
 
 local function _write_error(msg)
@@ -279,6 +280,10 @@ local function _flush()
                         .. err
         _write_error(err_msg)
         return nil, err_msg
+    else
+        if debug then
+            ngx_log(DEBUG, "send " .. bytes .. " bytes")
+        end
     end
 
     buffer_size = buffer_size - #send_buffer
@@ -287,8 +292,29 @@ local function _flush()
     return bytes
 end
 
+local function _periodic_flush()
+    if need_periodic_flush then
+        -- no regular flush happened after periodic flush timer had been set
+        if debug then
+            ngx_log(DEBUG, "performing periodic flush")
+        end
+        _flush()
+    else
+        if debug then
+            ngx_log(DEBUG, "no need to perform periodic flush: regular flush "
+                    .. "happened before")
+        end
+        need_periodic_flush = true
+    end
+
+    timer_at(periodic_flush, _periodic_flush)
+end
+
 local function _flush_buffer()
     local ok, err = timer_at(0, _flush)
+
+    need_periodic_flush = false
+
     if not ok then
         _write_error(err)
         return nil, err
@@ -332,6 +358,8 @@ function _M.init(user_config)
             pool_size = v
         elseif k == "max_buffer_reuse" then
             max_buffer_reuse = v
+        elseif k == "periodic_flush" then
+            periodic_flush = v
         end
     end
 
@@ -354,6 +382,15 @@ function _M.init(user_config)
     retry_send = 0
 
     logger_initted = true
+
+    if periodic_flush then
+        if debug then
+            ngx_log(DEBUG, "periodic flush enabled for every "
+                    .. periodic_flush .. " milliseconds")
+        end
+        need_periodic_flush = true
+        timer_at(periodic_flush, _periodic_flush)
+    end
 
     return logger_initted
 end

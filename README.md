@@ -127,6 +127,10 @@ Available user configurations are listed as follows:
 
     Keepalive pool size used by sock:keepalive. Default to 10.
 
+* `periodic_flush`
+
+    Periodic flush interval (in seconds). Set to `nil` to turn off this feature.
+
 [Back to TOC](#table-of-contents)
 
 initted

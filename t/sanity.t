@@ -648,3 +648,54 @@ log buffer reuse limit (1) reached, create a new "log_buffer_data"
 --- response_body
 foo
 wrote bytes: 15
+
+
+
+=== TEST 16: flush periodically
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua '
+            ngx.say("foo")
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    host = "127.0.0.1",
+                    port = 29999,
+                    flush_limit = 1000,
+                    drop_limit = 10000,
+                    retry_interval = 1,
+                    timeout = 50,
+                    max_buffer_reuse = 100,
+                    periodic_flush = 0.03, -- 0.03s
+                }
+            end
+
+            local bytes, err
+            bytes, err = logger.log("foo")
+            if err then
+                ngx.log(ngx.ERR, err)
+            end
+            ngx.say("wrote bytes: ", bytes)
+
+            ngx.sleep(0.05)
+
+            bytes, err = logger.log("bar")
+            if err then
+                ngx.log(ngx.ERR, err)
+            end
+            ngx.say("wrote bytes: ", bytes)
+            ngx.sleep(0.05)
+        ';
+    }
+--- request
+GET /t
+--- wait: 0.1
+--- tcp_listen: 29999
+--- tcp_reply:
+--- tcp_query: foobar
+--- tcp_query_len: 6
+--- response_body
+foo
+wrote bytes: 3
+wrote bytes: 3
