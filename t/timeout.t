@@ -89,7 +89,7 @@ GET /t?a=1&b=2
 --- wait: 0.1
 --- error_log
 tcp socket connect timed out
-try to connect to the log server
+reconnect to the log server
 --- response_body
 foo
 
@@ -125,7 +125,7 @@ GET /t?a=1&b=2
 --- tcp_reply:
 --- error_log
 lua tcp socket write timed out
-retry to send log message to the log server: timeout
+resend log messages to the log server: timeout
 --- response_body
 foo
 
@@ -225,8 +225,8 @@ GET /main
 --- wait: 0.2
 --- error_log
 lua tcp socket connect timed out
-retry to connect to the log server: timeout
-log error:try to send log message to the log server failed after 1 retries: try to connect to the log server failed after 1 retries: timeout
+reconnect to the log server: timeout
+log error:try to send log messages to the log server failed after 1 retries: try to connect to the log server failed after 1 retries: timeout
 --- response_body
 foo
 bar

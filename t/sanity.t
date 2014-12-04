@@ -147,7 +147,7 @@ foo
 
 
 
-=== TEST 4: buffer log message, no flush
+=== TEST 4: buffer log messages, no flush
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -208,7 +208,7 @@ foo
 
 
 
-=== TEST 6: log subrequest
+=== TEST 6: log subrequests
 --- http_config eval: $::HttpConfig
 --- config
     log_subrequest on;
@@ -262,7 +262,7 @@ foo
 
 
 
-=== TEST 7: log subrequest, small flush_limit, flush twice
+=== TEST 7: log subrequests, small flush_limit, flush twice
 --- http_config eval: $::HttpConfig
 --- config
     log_subrequest on;
@@ -314,7 +314,7 @@ foo
 
 
 
-=== TEST 8: do not log subrequest
+=== TEST 8: do not log subrequests
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -426,7 +426,7 @@ foo
 --- request
 GET /t?a=1&b=2
 --- error_log
-no logging server configured. Need host/port or path.
+no logging server configured. "host"/"port" or "path" is required.
 --- response_body
 foo
 
@@ -462,7 +462,7 @@ foo
 --- request
 GET /t?a=1&b=2
 --- error_log
-flush_limit should < drop_limit
+"flush_limit" should be < "drop_limit"
 --- response_body
 foo
 
@@ -509,7 +509,7 @@ GET /t?a=1&b=2
 --- tcp_query_len: 6
 --- tcp_reply:
 --- error_log
-logger buffer is full, this log would be dropped
+logger buffer is full, this log message will be dropped
 --- response_body
 foo
 
@@ -642,7 +642,7 @@ GET /t?a=1&b=2
 --- tcp_listen: 29999
 --- tcp_reply:
 --- error_log
-log buffer max reuse(1) reached, create new log_buffer_data
+log buffer reuse limit (1) reached, create a new "log_buffer_data"
 --- tcp_query: 111222333444555
 --- tcp_query_len: 15
 --- response_body
