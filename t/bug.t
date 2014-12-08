@@ -89,19 +89,19 @@ GET /t?a=1&b=2
 --- tcp_reply:
 --- tcp_no_close
 --- grep_error_log chop
-retry to send log message to the log server: timeout
+resend log messages to the log server: timeout
 --- response_body
 foo
 foo
 foo
 --- grep_error_log_out
-retry to send log message to the log server: timeout
-retry to send log message to the log server: timeout
-retry to send log message to the log server: timeout
+resend log messages to the log server: timeout
+resend log messages to the log server: timeout
+resend log messages to the log server: timeout
 
 
 
-=== TEST 2: insert new log message to buffer in the middle of last send (it's difficult to control the time sequence here, so this is skipped now)
+=== TEST 2: insert new log messages to buffer in the middle of last send (it's difficult to control the time sequence here, so this is skipped now)
 --- http_config eval: $::HttpConfig
 --- config
     log_subrequest on;

@@ -1,4 +1,4 @@
--- Copyright (C) 2013-2014 Jiale Zhi (calio), Cloudflare Inc.
+-- Copyright (C) 2013-2014 Jiale Zhi (calio), CloudFlare Inc.
 --require "luacov"
 
 local concat                = table.concat
@@ -23,11 +23,6 @@ if not ok then
     new_tab = function (narr, nrec) return {} end
 end
 
-local ok, clear_tab = pcall(require, "table.clear")
-if not ok then
-    clear_tab = function(tab) for k, _ in pairs(tab) do tab[k] = nil end end
-end
-
 local _M = new_tab(0, 5)
 
 local is_exiting
@@ -37,10 +32,10 @@ if not ngx.config or not ngx.config.ngx_lua_version
 
     is_exiting = function() return false end
 
-    ngx_log(CRIT, "lua-resty-logger-socket working with ngx_lua module < 0.9.3"
-            .. " has a serious issue that some log messages may be lost when"
-            .. " nginx reloads. We strongly recommend you update your ngx_lua"
-            .. " module to at least 0.9.3")
+    ngx_log(CRIT, "We strongly recommend you to update your ngx_lua module to "
+            .. "0.9.3 or above. lua-resty-logger-socket will lose some log "
+            .. "messages when Nginx reloads if it works with ngx_lua module "
+            .. "below 0.9.3")
 else
     is_exiting = ngx.worker.exiting
 end
@@ -60,6 +55,8 @@ local sni_host
 local path
 local max_buffer_reuse      = 10000        -- reuse buffer for at most 10000
                                            -- times
+local periodic_flush        = nil
+local need_periodic_flush   = nil
 
 -- internal variables
 local buffer_size           = 0
@@ -67,7 +64,7 @@ local buffer_size           = 0
 local send_buffer           = ""
 -- 1st level buffer, it stores incoming logs
 local log_buffer_data       = new_tab(20000, 0)
--- number of log lines in current buffer, starts from 0
+-- number of log lines in current 1st level buffer, starts from 0
 local log_buffer_index      = 0
 
 local last_error
@@ -84,7 +81,6 @@ local flushing
 local logger_initted
 local counter               = 0
 local ssl_session
-
 
 local function _write_error(msg)
     last_error = msg
@@ -103,7 +99,7 @@ local function _do_connect()
         sock:settimeout(timeout)
     end
 
-    -- host/port and path config have already been checked in init()
+    -- "host"/"port" and "path" have already been checked in init()
     if host and port then
         ok, err =  sock:connect(host, port)
     elseif path then
@@ -136,9 +132,9 @@ local function _connect()
 
     if connecting then
         if debug then
-            ngx_log(DEBUG, "previous connect not finished")
+            ngx_log(DEBUG, "previous connection not finished")
         end
-        return nil, "previous connect not finished"
+        return nil, "previous connection not finished"
     end
 
     connected = false
@@ -158,10 +154,10 @@ local function _connect()
         end
 
         if debug then
-            ngx_log(DEBUG, "retry to connect to the log server: ", err)
+            ngx_log(DEBUG, "reconnect to the log server: ", err)
         end
 
-        -- ngx.sleep use seconds to count time
+        -- ngx.sleep time is in seconds
         if not exiting then
             ngx_sleep(retry_interval / 1000)
         end
@@ -188,8 +184,8 @@ local function _prepare_stream_buffer()
         log_buffer_data = new_tab(20000, 0)
         counter = 0
         if debug then
-            ngx_log(DEBUG, "log buffer max reuse(" .. max_buffer_reuse
-                    .. ") reached, create new log_buffer_data")
+            ngx_log(DEBUG, "log buffer reuse limit (" .. max_buffer_reuse
+                    .. ") reached, create a new \"log_buffer_data\"")
         end
     end
 end
@@ -203,7 +199,7 @@ local function _do_flush()
 
     local bytes, err = sock:send(packet)
     if not bytes then
-        -- sock:send always close current connection on error
+        -- "sock:send" always closes current connection on error
         return nil, err
     end
 
@@ -231,7 +227,7 @@ end
 local function _flush_lock()
     if not flushing then
         if debug then
-            ngx_log(DEBUG, "flush lock accquired")
+            ngx_log(DEBUG, "flush lock acquired")
         end
         flushing = true
         return true
@@ -260,7 +256,7 @@ local function _flush()
 
     if not _need_flush() then
         if debug then
-            ngx_log(DEBUG, "do not need to flush:", log_buffer_index)
+            ngx_log(DEBUG, "no need to flush:", log_buffer_index)
         end
         _flush_unlock()
         return true
@@ -285,10 +281,10 @@ local function _flush()
         end
 
         if debug then
-            ngx_log(DEBUG, "retry to send log message to the log server: ", err)
+            ngx_log(DEBUG, "resend log messages to the log server: ", err)
         end
 
-        -- ngx.sleep use seconds to count time
+        -- ngx.sleep time is in seconds
         if not exiting then
             ngx_sleep(retry_interval / 1000)
         end
@@ -299,11 +295,15 @@ local function _flush()
     _flush_unlock()
 
     if not bytes then
-        local err_msg = "try to send log message to the log server "
+        local err_msg = "try to send log messages to the log server "
                         .. "failed after " .. max_retry_times .. " retries: "
                         .. err
         _write_error(err_msg)
         return nil, err_msg
+    else
+        if debug then
+            ngx_log(DEBUG, "send " .. bytes .. " bytes")
+        end
     end
 
     buffer_size = buffer_size - #send_buffer
@@ -312,8 +312,29 @@ local function _flush()
     return bytes
 end
 
+local function _periodic_flush()
+    if need_periodic_flush then
+        -- no regular flush happened after periodic flush timer had been set
+        if debug then
+            ngx_log(DEBUG, "performing periodic flush")
+        end
+        _flush()
+    else
+        if debug then
+            ngx_log(DEBUG, "no need to perform periodic flush: regular flush "
+                    .. "happened before")
+        end
+        need_periodic_flush = true
+    end
+
+    timer_at(periodic_flush, _periodic_flush)
+end
+
 local function _flush_buffer()
     local ok, err = timer_at(0, _flush)
+
+    need_periodic_flush = false
+
     if not ok then
         _write_error(err)
         return nil, err
@@ -351,12 +372,14 @@ function _M.init(user_config)
         elseif k == "max_retry_times" then
             max_retry_times = v
         elseif k == "retry_interval" then
-            -- ngx.sleep uses seconds to count sleep time
+            -- ngx.sleep time is in seconds
             retry_interval = v
         elseif k == "pool_size" then
             pool_size = v
         elseif k == "max_buffer_reuse" then
             max_buffer_reuse = v
+        elseif k == "periodic_flush" then
+            periodic_flush = v
         elseif k == "ssl" then
             ssl = v
         elseif k == "ssl_verify" then
@@ -367,12 +390,13 @@ function _M.init(user_config)
     end
 
     if not (host and port) and not path then
-        return nil, "no logging server configured. Need host/port or path."
+        return nil, "no logging server configured. \"host\"/\"port\" or "
+                .. "\"path\" is required."
     end
 
 
     if (flush_limit >= drop_limit) then
-        return nil, "flush_limit should < drop_limit"
+        return nil, "\"flush_limit\" should be < \"drop_limit\""
     end
 
     flushing = false
@@ -384,6 +408,15 @@ function _M.init(user_config)
     retry_send = 0
 
     logger_initted = true
+
+    if periodic_flush then
+        if debug then
+            ngx_log(DEBUG, "periodic flush enabled for every "
+                    .. periodic_flush .. " milliseconds")
+        end
+        need_periodic_flush = true
+        timer_at(periodic_flush, _periodic_flush)
+    end
 
     return logger_initted
 end
@@ -406,14 +439,14 @@ function _M.log(msg)
 
     local msg_len = #msg
 
-    -- return result of _flush_buffer is not checked, because it writes
+    -- response of "_flush_buffer" is not checked, because it writes
     -- error buffer
     if (is_exiting()) then
         exiting = true
         _write_buffer(msg)
         _flush_buffer()
         if (debug) then
-            ngx_log(DEBUG, "worker exiting")
+            ngx_log(DEBUG, "Nginx worker is exiting")
         end
         bytes = 0
     elseif (msg_len + buffer_size < flush_limit) then
@@ -426,10 +459,11 @@ function _M.log(msg)
     else
         _flush_buffer()
         if (debug) then
-            ngx_log(DEBUG, "logger buffer is full, this log would be dropped")
+            ngx_log(DEBUG, "logger buffer is full, this log message will be "
+                    .. "dropped")
         end
         bytes = 0
-        --- this message does not fit in buffer, drop it
+        --- this log message doesn't fit in buffer, drop it
     end
 
     if last_error then
