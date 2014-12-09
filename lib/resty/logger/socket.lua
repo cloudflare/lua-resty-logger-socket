@@ -386,7 +386,7 @@ function _M.init(user_config)
     if periodic_flush then
         if debug then
             ngx_log(DEBUG, "periodic flush enabled for every "
-                    .. periodic_flush .. " milliseconds")
+                    .. periodic_flush .. " seconds")
         end
         need_periodic_flush = true
         timer_at(periodic_flush, _periodic_flush)
