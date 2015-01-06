@@ -49,6 +49,9 @@ local drop_limit            = 1048576      -- 1MB
 local timeout               = 1000         -- 1 sec
 local host
 local port
+local ssl                   = false
+local ssl_verify            = true
+local sni_host
 local path
 local max_buffer_reuse      = 10000        -- reuse buffer for at most 10000
                                            -- times
@@ -77,7 +80,7 @@ local pool_size             = 10
 local flushing
 local logger_initted
 local counter               = 0
-
+local ssl_session
 
 local function _write_error(msg)
     last_error = msg
@@ -110,6 +113,20 @@ local function _do_connect()
     return sock
 end
 
+local function _do_handshake(sock)
+    if not ssl then
+        return sock
+    end
+
+    local session, err = sock:sslhandshake(ssl_session, sni_host or host, ssl_verify)
+    if not session then
+        return nil, err
+    end
+
+    ssl_session = session
+    return sock
+end
+
 local function _connect()
     local err, sock
 
@@ -129,8 +146,11 @@ local function _connect()
         sock, err = _do_connect()
 
         if sock then
-            connected = true
-            break
+            sock, err = _do_handshake(sock)
+            if sock then
+                connected = true
+                break
+            end
         end
 
         if debug then
@@ -360,6 +380,12 @@ function _M.init(user_config)
             max_buffer_reuse = v
         elseif k == "periodic_flush" then
             periodic_flush = v
+        elseif k == "ssl" then
+            ssl = v
+        elseif k == "ssl_verify" then
+            ssl_verify = v
+        elseif k == "sni_host" then
+            sni_host = v
         end
     end
 
