@@ -5,10 +5,10 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 + 5);
+plan tests => repeat_each() * (blocks() * 4 + 4);
 our $HtmlDir = html_dir;
 
-my $pwd = cwd();
+our $pwd = cwd();
 
 our $HttpConfig = qq{
     lua_package_path "$pwd/lib/?.lua;;";
@@ -699,3 +699,183 @@ GET /t
 foo
 wrote bytes: 3
 wrote bytes: 3
+
+
+
+=== TEST 17: SSL logging
+--- http_config eval
+"
+    lua_package_path '$::pwd/lib/?.lua;;';
+    server {
+        listen unix:$::HtmlDir/ssl.sock ssl;
+        server_name test.com;
+        ssl_certificate $::pwd/t/cert/test.crt;
+        ssl_certificate_key $::pwd/t/cert/test.key;
+
+        location /test {
+            lua_need_request_body on;
+            default_type 'text/plain';
+            # 204 No content
+            content_by_lua '
+                ngx.log(ngx.WARN, \"Message received: \", ngx.var.http_message)
+                ngx.log(ngx.WARN, \"SNI Host: \", ngx.var.ssl_server_name)
+                ngx.exit(204)
+            ';
+        }
+    }
+"
+--- config
+    location /t {
+        content_by_lua '
+            ngx.say("foo")
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    path = "$TEST_NGINX_HTML_DIR/ssl.sock",
+                    flush_limit = 1,
+                    drop_limit = 10000,
+                    retry_interval = 1,
+                    timeout = 50,
+                    ssl = true,
+                    ssl_verify = false,
+                    sni_host = "test.com",
+                }
+            end
+
+            local bytes, err
+            bytes, err = logger.log("GET /test HTTP/1.0\\r\\nHost: test.com\\r\\nConnection: close\\r\\nMessage: Hello SSL\\r\\n\\r\\n")
+            if err then
+                ngx.log(ngx.ERR, err)
+            end
+            ngx.say("wrote bytes: ", bytes)
+
+            ngx.sleep(0.05)
+        ';
+    }
+--- request
+GET /t
+--- wait: 0.1
+--- response_body
+foo
+wrote bytes: 77
+--- error_log
+Message received: Hello SSL
+SNI Host: test.com
+
+
+
+=== TEST 18: SSL logging - Verify
+--- http_config eval
+"
+    lua_package_path '$::pwd/lib/?.lua;;';
+    server {
+        listen unix:$::HtmlDir/ssl.sock ssl;
+        server_name test.com;
+        ssl_certificate $::pwd/t/cert/test.crt;
+        ssl_certificate_key $::pwd/t/cert/test.key;
+
+        location /test {
+            lua_need_request_body on;
+            default_type 'text/plain';
+            # 204 No content
+            content_by_lua 'ngx.log(ngx.WARN, \"Message received: \", ngx.var.http_message) ngx.exit(204)';
+        }
+    }
+"
+--- config
+    location /t {
+        content_by_lua '
+            ngx.say("foo")
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    path = "$TEST_NGINX_HTML_DIR/ssl.sock",
+                    flush_limit = 1,
+                    drop_limit = 10000,
+                    retry_interval = 1,
+                    timeout = 50,
+                    ssl = true,
+                    ssl_verify = true,
+                    sni_host = "test.com",
+                }
+            end
+
+            local bytes, err
+            bytes, err = logger.log("GET /test HTTP/1.0\\r\\nHost: test.com\\r\\nConnection: close\\r\\nMessage: Hello SSL\\r\\n\\r\\n")
+            if err then
+                ngx.log(ngx.ERR, err)
+            end
+            ngx.say("wrote bytes: ", bytes)
+
+            ngx.sleep(0.05)
+        ';
+    }
+--- request
+GET /t
+--- wait: 0.1
+--- response_body
+foo
+wrote bytes: 77
+--- error_log
+lua ssl certificate verify error
+
+
+
+=== TEST 19: SSL logging - No SNI
+--- http_config eval
+"
+    lua_package_path '$::pwd/lib/?.lua;;';
+    server {
+        listen unix:$::HtmlDir/ssl.sock ssl;
+        server_name test.com;
+        ssl_certificate $::pwd/t/cert/test.crt;
+        ssl_certificate_key $::pwd/t/cert/test.key;
+
+        location /test {
+            lua_need_request_body on;
+            default_type 'text/plain';
+            # 204 No content
+            content_by_lua '
+                ngx.log(ngx.WARN, \"Message received: \", ngx.var.http_message)
+                ngx.log(ngx.WARN, \"SNI Host: \", ngx.var.ssl_server_name)
+                ngx.exit(204)
+            ';
+        }
+    }
+"
+--- config
+    location /t {
+        content_by_lua '
+            ngx.say("foo")
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    path = "$TEST_NGINX_HTML_DIR/ssl.sock",
+                    flush_limit = 1,
+                    drop_limit = 10000,
+                    retry_interval = 1,
+                    timeout = 50,
+                    ssl = true,
+                    ssl_verify = false,
+                }
+            end
+
+            local bytes, err
+            bytes, err = logger.log("GET /test HTTP/1.0\\r\\nHost: test.com\\r\\nConnection: close\\r\\nMessage: Hello SSL\\r\\n\\r\\n")
+            if err then
+                ngx.log(ngx.ERR, err)
+            end
+            ngx.say("wrote bytes: ", bytes)
+
+            ngx.sleep(0.05)
+        ';
+    }
+--- request
+GET /t
+--- wait: 0.1
+--- response_body
+foo
+wrote bytes: 77
+--- error_log
+Message received: Hello SSL
+SNI Host: nil
