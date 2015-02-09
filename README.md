@@ -79,7 +79,7 @@ Synopsis
 Methods
 =======
 
-This logger module is designed to be shared inside an nginx worker process by all the requests. So currently only one remote log server is supported. We may support multiple log server sharding in the future.
+This logger module is designed to be shared inside an Nginx worker process by all the requests. So currently only one remote log server is supported. We may support multiple log server sharding in the future.
 
 [Back to TOC](#table-of-contents)
 
@@ -126,6 +126,10 @@ Available user configurations are listed as follows:
 * `pool_size`
 
     Keepalive pool size used by sock:keepalive. Default to 10.
+
+* `max_buffer_reuse`
+
+    Max number of reuse times of internal logging buffer before creating a new one (to prevent memory leak).
 
 * `periodic_flush`
 
