@@ -39,9 +39,6 @@ __DATA__
                     host = "127.0.0.1",
                     port = 29999,
                     flush_limit = 100,
-                    pool_size = 5,
-                    retry_interval = 1,
-                    timeout = 100,
                 }
             end
 

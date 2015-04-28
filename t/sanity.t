@@ -40,9 +40,6 @@ __DATA__
                     host = "127.0.0.1",
                     port = 29999,
                     flush_limit = 1,
-                    pool_size = 5,
-                    retry_interval = 1,
-                    timeout = 100,
                 }
             end
 
@@ -79,8 +76,6 @@ foo
                 local ok, err = logger.init{
                     flush_limit = 1,
                     path = "$TEST_NGINX_HTML_DIR/logger_test.sock",
-                    retry_interval = 1,
-                    timeout = 100,
                 }
                 if not ok then
                     ngx.log(ngx.ERR, err)
@@ -122,8 +117,6 @@ foo
                     host = "127.0.0.1",
                     port = 29999,
                     flush_limit = 1,
-                    retry_interval = 1,
-                    timeout = 100,
                 }
             end
 
@@ -161,8 +154,6 @@ foo
                     host = "127.0.0.1",
                     port = 29999,
                     flush_limit = 500,
-                    retry_interval = 1,
-                    timeout = 100,
                 }
             end
 
@@ -236,8 +227,6 @@ foo
                     host = "127.0.0.1",
                     port = 29999,
                     flush_limit = 6,
-                    retry_interval = 1,
-                    timeout = 100,
                 }
             end
 
@@ -290,8 +279,6 @@ foo
                 host = "127.0.0.1",
                 port = 29999,
                 flush_limit = 1,
-                retry_interval = 1,
-                timeout = 1000,
             }
         end
 
@@ -339,9 +326,6 @@ foo
                     host = "127.0.0.1",
                     port = 29999,
                     flush_limit = 1,
-                    log_subrequest = false,
-                    retry_interval = 1,
-                    timeout = 100,
                 }
             end
 
@@ -444,8 +428,6 @@ foo
                     flush_limit = 2,
                     drop_limit = 1,
                     path = "$TEST_NGINX_HTML_DIR/logger_test.sock",
-                    retry_interval = 1,
-                    timeout = 100,
                 }
                 if not ok then
                     ngx.log(ngx.ERR, err)
@@ -480,8 +462,6 @@ foo
                     path = "$TEST_NGINX_HTML_DIR/logger_test.sock",
                     drop_limit = 6,
                     flush_limit = 4,
-                    retry_interval = 1,
-                    timeout = 1,
                 }
             end
 
@@ -529,9 +509,6 @@ foo
                     host = "127.0.0.1",
                     port = 29999,
                     flush_limit = 1,
-                    pool_size = 5,
-                    retry_interval = 1,
-                    timeout = 100,
                 }
             end
 
@@ -570,9 +547,6 @@ wrote bytes: 10
                     port = 29999,
                     flush_limit = 10,
                     drop_limit = 11,
-                    pool_size = 5,
-                    retry_interval = 1,
-                    timeout = 100,
                 }
             end
 
@@ -616,9 +590,6 @@ wrote bytes: 10
                     port = 29999,
                     flush_limit = 1,
                     drop_limit = 10000,
-                    pool_size = 5,
-                    retry_interval = 1,
-                    timeout = 50,
                     max_buffer_reuse = 1,
                 }
             end
@@ -664,9 +635,6 @@ wrote bytes: 15
                     port = 29999,
                     flush_limit = 1000,
                     drop_limit = 10000,
-                    retry_interval = 1,
-                    timeout = 50,
-                    max_buffer_reuse = 100,
                     periodic_flush = 0.03, -- 0.03s
                 }
             end
@@ -733,9 +701,6 @@ wrote bytes: 3
                 local ok, err = logger.init{
                     path = "$TEST_NGINX_HTML_DIR/ssl.sock",
                     flush_limit = 1,
-                    drop_limit = 10000,
-                    retry_interval = 1,
-                    timeout = 50,
                     ssl = true,
                     ssl_verify = false,
                     sni_host = "test.com",
@@ -791,9 +756,6 @@ SNI Host: test.com
                 local ok, err = logger.init{
                     path = "$TEST_NGINX_HTML_DIR/ssl.sock",
                     flush_limit = 1,
-                    drop_limit = 10000,
-                    retry_interval = 1,
-                    timeout = 50,
                     ssl = true,
                     ssl_verify = true,
                     sni_host = "test.com",
@@ -852,9 +814,6 @@ lua ssl certificate verify error
                 local ok, err = logger.init{
                     path = "$TEST_NGINX_HTML_DIR/ssl.sock",
                     flush_limit = 1,
-                    drop_limit = 10000,
-                    retry_interval = 1,
-                    timeout = 50,
                     ssl = true,
                     ssl_verify = false,
                 }
