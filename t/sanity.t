@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 + 4);
+plan tests => repeat_each() * (blocks() * 4 + 17);
 our $HtmlDir = html_dir;
 
 our $pwd = cwd();
@@ -838,3 +838,79 @@ wrote bytes: 77
 --- error_log
 Message received: Hello SSL
 SNI Host: nil
+
+
+
+=== TEST 20: Test arguments
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            local logger = require "resty.logger.socket"
+            local ok, err = logger.init{ host = 128, port = 29999 }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ host = "google.com", port = "foo" }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ host = "google.com", port = 1234567 }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ path = 123 }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ path = "/test.sock", flush_limit = "a" }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ path = "/test.sock", drop_limit = -2.5 }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ path = "/test.sock", timeout = "bar" }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ path = "/test.sock", max_retry_times = "bar" }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ path = "/test.sock", retry_interval = "bar" }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ path = "/test.sock", pool_size = "bar" }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ path = "/test.sock", max_buffer_reuse = "bar" }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ path = "/test.sock", periodic_flush = "bar" }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ path = "/test.sock", ssl = "1" }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ path = "/test.sock", ssl_verify = 2 }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ path = "/test.sock", sni_host = true }
+            ngx.log(ngx.ERR, err)
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- error_log
+"host" must be a string
+"port" must be a number
+"port" out of range 0~65535
+"path" must be a string
+invalid "flush_limit"
+invalid "drop_limit"
+invalid "timeout"
+invalid "max_retry_times"
+invalid "retry_interval"
+invalid "pool_size"
+invalid "max_buffer_reuse"
+invalid "periodic_flush"
+"ssl" must be a boolean value
+"ssl_verify" must be a boolean value
+"sni_host" must be a string
+--- response_body
+foo

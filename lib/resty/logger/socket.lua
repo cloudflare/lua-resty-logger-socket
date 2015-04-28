@@ -17,6 +17,8 @@ local WARN                  = ngx.WARN
 local ERR                   = ngx.ERR
 local CRIT                  = ngx.CRIT
 
+local MAX_PORT              = 65535
+
 
 local ok, new_tab = pcall(require, "table.new")
 if not ok then
@@ -359,33 +361,78 @@ function _M.init(user_config)
 
     for k, v in pairs(user_config) do
         if k == "host" then
+            if type(v) ~= "string" then
+                return nil, '"host" must be a string'
+            end
             host = v
         elseif k == "port" then
+            if type(v) ~= "number" then
+                return nil, '"port" must be a number'
+            end
+            if v < 0 or v > MAX_PORT then
+                return nil, ('"port" out of range 0~%s'):format(MAX_PORT)
+            end
             port = v
         elseif k == "path" then
+            if type(v) ~= "string" then
+                return nil, '"path" must be a string'
+            end
             path = v
         elseif k == "flush_limit" then
+            if type(v) ~= "number" or v < 0 then
+                return nil, 'invalid "flush_limit"'
+            end
             flush_limit = v
         elseif k == "drop_limit" then
+            if type(v) ~= "number" or v < 0 then
+                return nil, 'invalid "drop_limit"'
+            end
             drop_limit = v
         elseif k == "timeout" then
+            if type(v) ~= "number" or v < 0 then
+                return nil, 'invalid "timeout"'
+            end
             timeout = v
         elseif k == "max_retry_times" then
+            if type(v) ~= "number" or v < 0 then
+                return nil, 'invalid "max_retry_times"'
+            end
             max_retry_times = v
         elseif k == "retry_interval" then
+            if type(v) ~= "number" or v < 0 then
+                return nil, 'invalid "retry_interval"'
+            end
             -- ngx.sleep time is in seconds
             retry_interval = v
         elseif k == "pool_size" then
+            if type(v) ~= "number" or v < 0 then
+                return nil, 'invalid "pool_size"'
+            end
             pool_size = v
         elseif k == "max_buffer_reuse" then
+            if type(v) ~= "number" or v < 0 then
+                return nil, 'invalid "max_buffer_reuse"'
+            end
             max_buffer_reuse = v
         elseif k == "periodic_flush" then
+            if type(v) ~= "number" or v < 0 then
+                return nil, 'invalid "periodic_flush"'
+            end
             periodic_flush = v
         elseif k == "ssl" then
+            if type(v) ~= "boolean" then
+                return nil, '"ssl" must be a boolean value'
+            end
             ssl = v
         elseif k == "ssl_verify" then
+            if type(v) ~= "boolean" then
+                return nil, '"ssl_verify" must be a boolean value'
+            end
             ssl_verify = v
         elseif k == "sni_host" then
+            if type(v) ~= "string" then
+                return nil, '"sni_host" must be a string'
+            end
             sni_host = v
         end
     end
