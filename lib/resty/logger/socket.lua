@@ -12,17 +12,15 @@ local tostring              = tostring
 local debug                 = ngx.config.debug
 
 local DEBUG                 = ngx.DEBUG
-local NOTICE                = ngx.NOTICE
-local WARN                  = ngx.WARN
-local ERR                   = ngx.ERR
 local CRIT                  = ngx.CRIT
 
 local MAX_PORT              = 65535
 
 
-local ok, new_tab = pcall(require, "table.new")
-if not ok then
-    new_tab = function (narr, nrec) return {} end
+-- table.new(narr, nrec)
+local succ, new_tab = pcall(require, "table.new")
+if not succ then
+    new_tab = function () return {} end
 end
 
 local _M = new_tab(0, 5)
@@ -194,13 +192,15 @@ local function _prepare_stream_buffer()
 end
 
 local function _do_flush()
+    local ok, err, sock, bytes
     local packet = send_buffer
-    local sock, err = _connect()
+
+    sock, err = _connect()
     if not sock then
         return nil, err
     end
 
-    local bytes, err = sock:send(packet)
+    bytes, err = sock:send(packet)
     if not bytes then
         -- "sock:send" always closes current connection on error
         return nil, err
@@ -211,7 +211,7 @@ local function _do_flush()
         ngx_log(DEBUG, ngx.now(), ":log flush:" .. bytes .. ":" .. packet)
     end
 
-    local ok, err = sock:setkeepalive(0, pool_size)
+    ok, err = sock:setkeepalive(0, pool_size)
     if not ok then
         return nil, err
     end
@@ -246,7 +246,7 @@ local function _flush_unlock()
 end
 
 local function _flush()
-    local ok, err
+    local err
 
     -- pre check
     if not _flush_lock() then
