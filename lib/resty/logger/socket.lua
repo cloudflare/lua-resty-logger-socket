@@ -3,6 +3,7 @@
 
 local concat                = table.concat
 local tcp                   = ngx.socket.tcp
+local udp                   = ngx.socket.udp
 local timer_at              = ngx.timer.at
 local ngx_log               = ngx.log
 local ngx_sleep             = ngx.sleep
@@ -57,6 +58,7 @@ local max_buffer_reuse      = 10000        -- reuse buffer for at most 10000
                                            -- times
 local periodic_flush        = nil
 local need_periodic_flush   = nil
+local sock_type             = 'tcp'
 
 -- internal variables
 local buffer_size           = 0
@@ -90,7 +92,12 @@ local function _do_connect()
     local ok, err, sock
 
     if not connected then
-        sock, err = tcp()
+        if (sock_type == 'udp') then
+            sock, err = udp()
+        else
+            sock, err = tcp()
+        end
+
         if not sock then
             _write_error(err)
             return nil, err
@@ -101,9 +108,13 @@ local function _do_connect()
 
     -- "host"/"port" and "path" have already been checked in init()
     if host and port then
-        ok, err =  sock:connect(host, port)
+        if (sock_type == 'udp') then
+            ok, err = sock:setpeername(host, port)
+        else
+            ok, err = sock:connect(host, port)
+        end
     elseif path then
-        ok, err =  sock:connect("unix:" .. path)
+        ok, err = sock:connect("unix:" .. path)
     end
 
     if not ok then
@@ -211,9 +222,11 @@ local function _do_flush()
         ngx_log(DEBUG, ngx.now(), ":log flush:" .. bytes .. ":" .. packet)
     end
 
-    ok, err = sock:setkeepalive(0, pool_size)
-    if not ok then
-        return nil, err
+    if (sock_type ~= 'udp') then
+        ok, err = sock:setkeepalive(0, pool_size)
+        if not ok then
+            return nil, err
+        end
     end
 
     return bytes
@@ -378,6 +391,14 @@ function _M.init(user_config)
                 return nil, '"path" must be a string'
             end
             path = v
+        elseif k == "sock_type" then
+            if type(v) ~= "string" then
+                return nil, '"sock_type" must be a string'
+            end
+            if v ~= "tcp" and v ~= "udp" then
+                return nil, '"sock_type" must be "tcp" or "udp"'
+            end
+            sock_type = v
         elseif k == "flush_limit" then
             if type(v) ~= "number" or v < 0 then
                 return nil, 'invalid "flush_limit"'
