@@ -111,6 +111,10 @@ Available user configurations are listed as follows:
 
     log server port number.
 
+* `sock_type`
+
+    IP protocol type to use for transport layer. Can be either "tcp" or "udp". Default is "tcp".
+
 * `path`
 
     If the log server uses a stream-typed unix domain socket, `path` is the socket file path. Note that host/port and path cannot both be empty. At least one must be supplied.
