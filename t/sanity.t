@@ -5,7 +5,7 @@ use Cwd qw(cwd);
 
 repeat_each(2);
 
-plan tests => repeat_each() * (blocks() * 4 + 17);
+plan tests => repeat_each() * (blocks() * 4 + 19);
 our $HtmlDir = html_dir;
 
 our $pwd = cwd();
@@ -857,6 +857,12 @@ SNI Host: nil
             local ok, err = logger.init{ host = "google.com", port = 1234567 }
             ngx.log(ngx.ERR, err)
 
+            local ok, err = logger.init{ sock_type = true }
+            ngx.log(ngx.ERR, err)
+
+            local ok, err = logger.init{ sock_type = "upd" }
+            ngx.log(ngx.ERR, err)
+
             local ok, err = logger.init{ path = 123 }
             ngx.log(ngx.ERR, err)
 
@@ -900,6 +906,8 @@ GET /t?a=1&b=2
 "host" must be a string
 "port" must be a number
 "port" out of range 0~65535
+"sock_type" must be a string
+"sock_type" must be "tcp" or "udp"
 "path" must be a string
 invalid "flush_limit"
 invalid "drop_limit"
