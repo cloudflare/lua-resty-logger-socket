@@ -76,7 +76,7 @@ GET /t?a=1&b=2
                     flush_limit = 1,
                 }
 
-				if err then ngx.log(ngx.ERR, err) end
+                if err then ngx.log(ngx.ERR, err) end
             end
 
             local bytes, err = logger.log(ngx.var.request_uri)
@@ -112,7 +112,7 @@ GET /t?a=1&b=2
                     flush_limit = 1,
                 }
 
-				if err then ngx.log(ngx.ERR, err) end
+                if err then ngx.log(ngx.ERR, err) end
             end
 
             local bytes, err = logger.log(ngx.var.request_uri)
