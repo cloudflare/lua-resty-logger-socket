@@ -328,8 +328,12 @@ local function _flush()
     return bytes
 end
 
-local function _periodic_flush()
-    if need_periodic_flush then
+local function _periodic_flush(premature)
+    if premature then
+        exiting = true
+    end
+
+    if need_periodic_flush or exiting then
         -- no regular flush happened after periodic flush timer had been set
         if debug then
             ngx_log(DEBUG, "performing periodic flush")
