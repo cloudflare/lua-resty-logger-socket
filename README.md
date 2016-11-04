@@ -176,6 +176,7 @@ flush
 
 Flushes any buffered messages out to remote immediately. Usually you do not need
 to call this manually because flushing happens automatically when the buffer is full.
+And you cannot call `flush` in `log_by_lua*` becase cosocket API is disabled in that context.
 
 [Back to TOC](#table-of-contents)
 
