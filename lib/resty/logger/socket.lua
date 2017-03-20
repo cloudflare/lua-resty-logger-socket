@@ -361,11 +361,11 @@ local function _flush_buffer()
     end
 end
 
-local function _write_buffer(msg)
+local function _write_buffer(msg, len)
     log_buffer_index = log_buffer_index + 1
     log_buffer_data[log_buffer_index] = msg
 
-    buffer_size = buffer_size + #msg
+    buffer_size = buffer_size + len
 
 
     return buffer_size
@@ -505,28 +505,28 @@ function _M.log(msg)
         msg = tostring(msg)
     end
 
+    local msg_len = #msg
+
     if (debug) then
         ngx.update_time()
-        ngx_log(DEBUG, ngx.now(), ":log message length: " .. #msg)
+        ngx_log(DEBUG, ngx.now(), ":log message length: " .. msg_len)
     end
-
-    local msg_len = #msg
 
     -- response of "_flush_buffer" is not checked, because it writes
     -- error buffer
     if (is_exiting()) then
         exiting = true
-        _write_buffer(msg)
+        _write_buffer(msg, msg_len)
         _flush_buffer()
         if (debug) then
             ngx_log(DEBUG, "Nginx worker is exiting")
         end
         bytes = 0
     elseif (msg_len + buffer_size < flush_limit) then
-        _write_buffer(msg)
+        _write_buffer(msg, msg_len)
         bytes = msg_len
     elseif (msg_len + buffer_size <= drop_limit) then
-        _write_buffer(msg)
+        _write_buffer(msg, msg_len)
         _flush_buffer()
         bytes = msg_len
     else
