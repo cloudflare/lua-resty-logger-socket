@@ -117,7 +117,7 @@ Available user configurations are listed as follows:
 
 * `path`
 
-    If the log server uses a stream-typed unix domain socket, `path` is the socket file path. Note that host/port and path cannot both be empty. At least one must be supplied.
+    the unix socket file path. Note that host/port and path cannot both be empty. At least one must be supplied.
 
 * `max_retry_times`
 

@@ -63,7 +63,7 @@ foo
 
 
 
-=== TEST 2: small flush_limit, instant flush, unix domain socket
+=== TEST 2A: small flush_limit, instant flush, unix domain STREAM socket
 --- http_config eval: $::HttpConfig
 --- config
     location /t {
@@ -98,6 +98,46 @@ GET /t?a=1&b=2
 [error]
 --- tcp_query: /t?a=1&b=2
 --- tcp_query_len: 10
+--- response_body
+foo
+
+
+
+=== TEST 2B: small flush_limit, instant flush, unix domain DGRAM socket
+--- http_config eval: $::HttpConfig
+--- config
+    location /t {
+        content_by_lua 'ngx.say("foo")';
+        log_by_lua '
+            collectgarbage()  -- to help leak testing
+
+            local logger = require "resty.logger.socket"
+            if not logger.initted() then
+                local ok, err = logger.init{
+                    flush_limit = 1,
+                    path = "$TEST_NGINX_HTML_DIR/logger_test.sock",
+                    sock_type = "udp",
+                }
+                if not ok then
+                    ngx.log(ngx.ERR, err)
+                    return
+                end
+            end
+
+            local bytes, err = logger.log(ngx.var.request_uri)
+            if err then
+                ngx.log(ngx.ERR, err)
+            end
+        ';
+    }
+--- request
+GET /t?a=1&b=2
+--- wait: 0.1
+--- udp_listen eval: "$ENV{TEST_NGINX_HTML_DIR}/logger_test.sock"
+--- udp_reply:
+--- no_error_log
+[error]
+--- udp_query: /t?a=1&b=2
 --- response_body
 foo
 
