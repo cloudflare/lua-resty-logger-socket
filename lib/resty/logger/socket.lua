@@ -223,7 +223,7 @@ local function _do_flush()
     end
 
     if (sock_type ~= 'udp') then
-        ok, err = sock:setkeepalive(0, pool_size)
+        ok, err = sock:setkeepalive(timeout, pool_size)
         if not ok then
             return nil, err
         end
