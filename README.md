@@ -1,3 +1,25 @@
+Modification
+============
+Modified to an object-oriented socket that one can create multiple socket object for different server connection
+Modified by whuben(https://github.com/whuben)
+
+Motivation of Modification
+==========================
+The old version `resty.socket.lua`(written by Jiale Zhi (calio), CloudFlare Inc) is not support for multiple syslog server, if you want to send different log message to different remote server, you should make copies of the socket with different name and requrie them in the code, one copy just supports for one remote server.
+So, just make it objective-oriented for supporting multiple syslog server  
+
+Usage for creating multipul socket objects
+==========================================
+```
+local socket = require "lib.resty.socket"
+--create two socket objects for remote log server A and B
+local socket_obj_a = socket:init(syslog_config_a)     --syslog_config_a is the config info of remote log server A
+local socket_obj_b = socket:init(syslog_config_b)     --syslog_config_b is the config info of remote log server B
+--send msg to remote log server
+socket_obj_a:log(msg_a.."\n")                         --send message msg_a to remote log server A 
+socket_obj_b:log(msg_b.."\n")                         --send message msg_b to remote log server B
+```
+
 Name
 ====
 
