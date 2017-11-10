@@ -18,7 +18,6 @@ local CRIT                  = ngx.CRIT
 local MAX_PORT              = 65535
 
 
--- table.new(narr, nrec)
 local succ, new_tab = pcall(require, "table.new")
 if not succ then
     new_tab = function () return {} end
@@ -80,7 +79,7 @@ local max_retry_times       = 3
 local retry_interval        = 100         -- 0.1s
 local pool_size             = 10
 local flushing
-local logger_initted
+local logger_initted        = false
 local counter               = 0
 local ssl_session
 
@@ -328,11 +327,7 @@ local function _flush()
     return bytes
 end
 
-local function _periodic_flush(premature)
-    if premature then
-        exiting = true
-    end
-
+local function _periodic_flush(initted)
     if need_periodic_flush or exiting then
         -- no regular flush happened after periodic flush timer had been set
         if debug then
@@ -347,7 +342,11 @@ local function _periodic_flush(premature)
         need_periodic_flush = true
     end
 
-    timer_at(periodic_flush, _periodic_flush)
+    if not initted then
+        return
+    end
+
+    timer_at(periodic_flush, _periodic_flush, logger_initted)
 end
 
 local function _flush_buffer()
@@ -488,7 +487,7 @@ function _M.init(user_config)
                     .. periodic_flush .. " seconds")
         end
         need_periodic_flush = true
-        timer_at(periodic_flush, _periodic_flush)
+        timer_at(periodic_flush, _periodic_flush, logger_initted)
     end
 
     return logger_initted
@@ -555,4 +554,3 @@ end
 _M.flush = _flush
 
 return _M
-
