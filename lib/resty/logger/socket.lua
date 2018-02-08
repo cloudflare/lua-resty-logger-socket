@@ -313,7 +313,7 @@ local function _periodic_flush(premature,socket_obj)
         socket_obj.need_periodic_flush = true
     end
 
-    timer_at(periodic_flush, _periodic_flush,socket_obj)
+    timer_at(socket_obj.periodic_flush, _periodic_flush,socket_obj)
 end
 
 function _M:_flush_buffer()
@@ -463,7 +463,7 @@ function _M:init(user_config)
                     .. socket_instance.periodic_flush .. " seconds")
         end
         socket_instance.need_periodic_flush = true
-        timer_at(socket_instance.periodic_flush,_periodic_flush,socket_instance)
+        timer_at(socket_instance.periodic_flush,_periodic_flush,setmetatable(socket_instance,mt))
     end
     return setmetatable(socket_instance,mt)
 end
