@@ -114,7 +114,11 @@ local function _do_connect()
             ok, err = sock:connect(host, port)
         end
     elseif path then
-        ok, err = sock:connect("unix:" .. path)
+        if (sock_type == 'udp') then
+            ok, err = sock:setpeername("unix:" .. path)
+        else
+            ok, err = sock:connect("unix:" .. path)
+        end
     end
 
     if not ok then
