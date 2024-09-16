@@ -49,7 +49,7 @@ Synopsis
                 local logger = require "resty.logger.socket"
                 if not logger.initted() then
                     local ok, err = logger.init{
-                        host = 'xxx',
+                        host = "xxx",
                         port = 1234,
                         flush_limit = 1234,
                         drop_limit = 5678,
