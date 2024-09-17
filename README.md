@@ -44,11 +44,11 @@ Synopsis
     lua_package_path "/path/to/lua-resty-logger-socket/lib/?.lua;;";
 
     server {
-        location / {
+        location /t {
             log_by_lua '
-                local logger = require "resty.logger.socket"
-                if not logger.initted() then
-                    local ok, err = logger.init{
+                local logger_socket = require "resty.logger.socket"
+                if not logger_socket.initted() then
+                    local ok, err = logger_socket.init{
                         host = 'xxx',
                         port = 1234,
                         flush_limit = 1234,
@@ -64,7 +64,36 @@ Synopsis
                 -- construct the custom access log message in
                 -- the Lua variable "msg"
 
-                local bytes, err = logger.log(msg)
+                local bytes, err = logger_socket.log(msg)
+                if err then
+                    ngx.log(ngx.ERR, "failed to log message: ", err)
+                    return
+                end
+            ';
+        }
+
+        location /m {
+            log_by_lua '
+                local logger_socket = require "resty.logger.socket"
+                local logger = logger_socket:new()
+                if not logger:initted() then
+                    local ok, err = logger:init{
+                        host = 'xxx',
+                        port = 1234,
+                        flush_limit = 1234,
+                        drop_limit = 5678,
+                    }
+                    if not ok then
+                        ngx.log(ngx.ERR, "failed to initialize the logger: ",
+                                err)
+                        return
+                    end
+                end
+
+                -- construct the custom access log message in
+                -- the Lua variable "msg"
+
+                local bytes, err = logger:log(msg)
                 if err then
                     ngx.log(ngx.ERR, "failed to log message: ", err)
                     return
@@ -83,11 +112,20 @@ This logger module is designed to be shared inside an Nginx worker process by al
 
 [Back to TOC](#table-of-contents)
 
+new
+----
+`syntax: logger = logger_socket.new()`
+
+Create a logger_socket object.
+
+[Back to TOC](#table-of-contents)
+
 init
 ----
-`syntax: ok, err = logger.init(user_config)`
+`syntax: ok, err = logger:init(user_config)
+    or ok, err = logger_socket.init(user_config)`
 
-Initialize logger with user configurations. This logger must be initted before use. If you do not initialize the logger, you will get an error.
+Initialize logger with user configurations. This logger must be initted before use. If you do not initialize the logger, you will get an error. If you do not new a logger object before init, a global logger_socket object will be created by default.
 
 Available user configurations are listed as follows:
 
@@ -155,24 +193,27 @@ Available user configurations are listed as follows:
 
 initted
 --------
-`syntax: initted = logger.initted()`
+`syntax: initted = logger:initted()
+    or initted = logger_socket.initted()`
 
-Get a boolean value indicating whether this module has been initted (by calling the [init](#init) method).
+Get a boolean value indicating whether this object or module has been initted (by calling the [init](#init) method).
 
 [Back to TOC](#table-of-contents)
 
 log
 ---
-`syntax: bytes, err = logger.log(msg)`
+`syntax: bytes, err = logger:log(msg)
+    or bytes, err = logger_socket.log(msg)`
 
-Log a message. By default, the log message will be buffered in the logger module until `flush_limit` is reached in which case the logger will flush all the buffered messages to remote log server via a socket.
+Log a message. By default, the log message will be buffered in the logger object or module until `flush_limit` is reached in which case the logger will flush all the buffered messages to remote log server via a socket.
 `bytes` is the number of bytes that successfully buffered in the logger. If `bytes` is nil, `err` is a string describing what kind of error happens this time. If bytes is not nil, then `err` is a previous error message. `err` can be nil when `bytes` is not nil.
 
 [Back to TOC](#table-of-contents)
 
 flush
 -----
-`syntax: bytes, err = logger.flush()`
+`syntax: bytes, err = logger.flush(_, logger)
+    or bytes, err = logger_socket.flush()`
 
 Flushes any buffered messages out to remote immediately. Usually you do not need
 to call this manually because flushing happens automatically when the buffer is full.
@@ -196,7 +237,7 @@ add the path of your `lua-resty-logger-socket` source tree to ngx_lua's Lua modu
 
 and then load the library in Lua:
 
-    local logger = require "resty.logger.socket"
+    local logger_socket = require "resty.logger.socket"
 
 [Back to TOC](#table-of-contents)
 
