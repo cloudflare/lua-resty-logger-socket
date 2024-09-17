@@ -41,7 +41,7 @@ our $HttpConfig = qq{
     lua_package_cpath "/usr/local/openresty-debug/lualib/?.so;/usr/local/openresty/lualib/?.so;;";
 };
 
-$ENV{TEST_NGINX_RESOLVER} = '8.8.8.8';
+$ENV{TEST_NGINX_RESOLVER} ||= '8.8.8.8';
 $ENV{TEST_NGINX_HTML_DIR} = $HtmlDir;
 
 no_long_string();
@@ -55,7 +55,7 @@ __DATA__
 === TEST 1: connect timeout
 --- http_config eval: $::HttpConfig
 --- config
-    resolver 8.8.8.8;
+    resolver $TEST_NGINX_RESOLVER;
     location /t {
         content_by_lua '
             -- visit agentzh.org first to get DNS resolve done, then the
@@ -172,7 +172,7 @@ foo
 === TEST 4: return previous log error
 --- http_config eval: $::HttpConfig
 --- config
-    resolver 8.8.8.8;
+    resolver $TEST_NGINX_RESOLVER;
     log_subrequest on;
     location /main {
         content_by_lua '
@@ -237,7 +237,7 @@ foo
 === TEST 5: flush race condition
 --- http_config eval: $::HttpConfig
 --- config
-    resolver 8.8.8.8;
+    resolver $TEST_NGINX_RESOLVER;
     location /t {
         content_by_lua '
             -- visit agentzh.org first to get DNS resolve done, then the
