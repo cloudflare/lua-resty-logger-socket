@@ -107,14 +107,11 @@ local function _do_connect()
     end
 
     -- "host"/"port" and "path" have already been checked in init()
+    local connector = sock_type == 'udp' and sock.setpeername or sock.connect
     if host and port then
-        if (sock_type == 'udp') then
-            ok, err = sock:setpeername(host, port)
-        else
-            ok, err = sock:connect(host, port)
-        end
+        ok, err = connector(sock, host, port)
     elseif path then
-        ok, err = sock:connect("unix:" .. path)
+        ok, err = connector(sock, "unix:" .. path)
     end
 
     if not ok then
