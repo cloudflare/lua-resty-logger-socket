@@ -474,9 +474,7 @@ function _M.init(user_config)
 
     flushing = false
     exiting = false
-    connecting = false
 
-    connected = false
     retry_connect = 0
     retry_send = 0
 
@@ -548,9 +546,14 @@ function _M.log(msg)
     return bytes
 end
 
+function _M.isconnected()
+    return connected,connecting
+end
+
 function _M.initted()
     return logger_initted
 end
+
 
 _M.flush = _flush
 
